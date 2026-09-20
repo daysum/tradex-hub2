@@ -294,7 +294,7 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/mysum/tradex-hub2.git
+git clone https://github.com/daysum/tradex-hub2.git
 cd tradex-hub2
 ```
 
