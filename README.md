@@ -294,8 +294,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/wolfjkd/tradex-hub.git
-cd tradex-hub
+git clone https://github.com/mysum/tradex-hub2.git
+cd tradex-hub2
 ```
 
 ### 2. 创建独立 venv（推荐）
@@ -474,6 +474,6 @@ Apache-2.0 License
 
 ---
 
-## 作者
-
+## 感谢
+原作者
 **郭良勇 (wolfjkd)** — A股T0日内交易员
