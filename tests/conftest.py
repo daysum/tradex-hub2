@@ -70,3 +70,21 @@ def sample_tick_data():
         {"time": "09:30:03", "price": 1799.90, "volume": 150, "amount": 269985.0,
          "direction": "买", "bid1": 1799.90, "ask1": 1800.00},
     ]
+
+
+@pytest.fixture(autouse=True)
+def _reset_em_host_health():
+    """每个用例前后清空「镜像静默期」与「死主机冷却」。
+
+    这两份状态是 `anti_ban_client` 的**模块级全局**，若不隔离会跨用例污染：
+    例如前一个用例让某 (主机,路径) 进入冷却，后一个用例对同一 URL 的断言
+    就会因为「直接返回 None」而失败（实测 push2 的 `/x` 被多个用例复用）。
+    """
+    try:
+        from astock_signals import anti_ban_client as _abc
+    except Exception:  # noqa: BLE001 - 环境缺依赖时不影响其它测试
+        yield
+        return
+    _abc.reset_host_health()
+    yield
+    _abc.reset_host_health()

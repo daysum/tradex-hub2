@@ -124,7 +124,8 @@ def fetch_wencai_news(
 
     try:
         import json
-        import urllib.request
+
+        from astock_signals.antiban_http import get_client
 
         url = f"{IWENCAI_BASE_URL}/v1/comprehensive/search"
         payload = {
@@ -137,12 +138,12 @@ def fetch_wencai_news(
             "Content-Type": "application/json",
         }
         data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            url, data=data, headers=headers, method="POST"
-        )
 
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
+        # v3.3.20：由裸 urllib 收敛到统一防封层（指纹伪装 + 节流 + 退避重试）
+        resp = get_client("wencai").post(url, data=data, headers=headers, timeout=30)
+        if resp is None:
+            raise RuntimeError("iwencai OpenAPI 请求重试耗尽")
+        result = resp.json()
 
         # 解析响应
         items = result.get("data", {}).get("items", []) or []

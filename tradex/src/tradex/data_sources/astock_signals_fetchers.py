@@ -40,20 +40,12 @@ def fetch_fund_flow_em(code: str = "", symbol: str = "", curr_date: str = "", in
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
     """
     from datetime import datetime
-    from curl_cffi import requests as _rq
+
+    from .em_client import em_get
 
     code = code or symbol
     if not curr_date:
         curr_date = datetime.now().strftime("%Y-%m-%d")
-
-    _session = _rq.Session()
-    _session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Referer": "https://data.eastmoney.com/",
-    })
 
     secid = f"1.{code}" if code.startswith("6") else f"0.{code}"
     result: dict = {
@@ -74,7 +66,10 @@ def fetch_fund_flow_em(code: str = "", symbol: str = "", curr_date: str = "", in
         "fields2": "f51,f52,f53,f54,f55,f56,f57",
     }
     try:
-        resp = _session.get(url1, params=params1, timeout=10)
+        resp = em_get(url1, params=params1,
+                      headers={"Referer": "https://data.eastmoney.com/"}, timeout=10)
+        if resp is None:
+            raise RuntimeError("em push2 fund flow: 请求重试耗尽")
         resp.raise_for_status()
         data = resp.json()
         klines = data.get("data", {}).get("klines", [])
@@ -109,7 +104,10 @@ def fetch_fund_flow_em(code: str = "", symbol: str = "", curr_date: str = "", in
             "fields2": "f51,f52,f53,f54,f55,f56,f57",
         }
         try:
-            resp = _session.get(url2, params=params2, timeout=10)
+            resp = em_get(url2, params=params2,
+                          headers={"Referer": "https://data.eastmoney.com/"}, timeout=10)
+            if resp is None:
+                raise RuntimeError("em push2his fund flow: 请求重试耗尽")
             resp.raise_for_status()
             data = resp.json()
             hist_klines = data.get("data", {}).get("klines", [])

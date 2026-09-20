@@ -14,14 +14,31 @@ from collections import Counter
 from datetime import datetime
 import logging
 
-import requests as _requests
+from .antiban_http import get_client, json_of
 
 logger = logging.getLogger(__name__)
 
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
-)
+# 同花顺 getharden 接口的 Referer（与客户端会话默认 Referer 一致，显式写出便于阅读）
+_THS_REFERER = "https://www.10jqka.com.cn/"
+
+
+def _fetch_harden(curr_date: str) -> dict:
+    """拉取同花顺当日强势股接口原始 JSON。
+
+    v3.3.20：由裸 requests 收敛到统一防封层（指纹伪装 + 节流 + 退避重试）。
+    该接口服务端不声明 charset 但内容为 GBK，故 json_of 带 gbk 兜底。
+
+    Raises:
+        RuntimeError: 请求重试耗尽。
+    """
+    url = (
+        f"https://zx.10jqka.com.cn/event/api/getharden/"
+        f"date/{curr_date}/orderby/date/orderway/desc/charset/GBK/"
+    )
+    r = get_client("ths").get(url, headers={"Referer": _THS_REFERER}, timeout=10)
+    if r is None:
+        raise RuntimeError("同花顺 getharden 请求重试耗尽")
+    return json_of(r, fallback_encoding="gbk")
 
 
 def get_hot_stocks(curr_date: str = "") -> str:
@@ -40,13 +57,7 @@ def get_hot_stocks(curr_date: str = "") -> str:
         curr_date = datetime.now().strftime("%Y-%m-%d")
 
     try:
-        url = (
-            f"https://zx.10jqka.com.cn/event/api/getharden/"
-            f"date/{curr_date}/orderby/date/orderway/desc/charset/GBK/"
-        )
-        headers = {"User-Agent": _UA}
-        r = _requests.get(url, headers=headers, timeout=10)
-        data = r.json()
+        data = _fetch_harden(curr_date)
 
         if data.get("errocode", 0) != 0:
             return f"同花顺 API error: {data.get('errormsg', 'unknown')}"
@@ -111,13 +122,7 @@ def get_hot_stocks_json(curr_date: str = "") -> dict:
     result = {"date": curr_date, "stocks": [], "theme_frequency": {}, "error": None}
 
     try:
-        url = (
-            f"https://zx.10jqka.com.cn/event/api/getharden/"
-            f"date/{curr_date}/orderby/date/orderway/desc/charset/GBK/"
-        )
-        headers = {"User-Agent": _UA}
-        r = _requests.get(url, headers=headers, timeout=10)
-        data = r.json()
+        data = _fetch_harden(curr_date)
 
         if data.get("errocode", 0) != 0:
             result["error"] = f"同花顺 API error: {data.get('errormsg', 'unknown')}"

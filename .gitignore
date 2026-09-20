@@ -53,3 +53,9 @@ _test_*.py
 diagnose_*.py
 verify_*.py
 scripts/_retired/
+
+# Environment (防止误提交真实密钥)
+.env
+.env.local
+*.env
+!tradex/.env.example

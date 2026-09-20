@@ -143,30 +143,56 @@ class TestEltdxFetcherParamCompat:
 class TestAkshareFetcherParamCompat:
     """akshare_fetchers 参数归一化测试。"""
 
-    def test_fetch_historical_kline_accepts_code(self):
-        """关键回归：route('historical_kline', code=...) 必须能路由到 akshare。"""
+    @staticmethod
+    def _patch_kline_source(monkeypatch):
+        """替换统一入口，捕获到达源站的请求参数。
+
+        v3.3.27：`fetch_historical_kline` 已由 akshare 改为本项目直连，
+        注入点从 `ak.stock_zh_a_hist` 变为 `em_client.em_get`。
+        测试意图不变：验证 **参数归一化确实传到了源站**。
+        """
+        from tradex.data_sources import em_client
+
+        captured = {}
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"rc": 0, "data": {"klines": [
+                    "2026-09-18,1262.99,1257.12,1265.88,1256.10,24891,3135849216,"
+                    "0.77,-0.78,-9.86,0.20,0"
+                ]}}
+
+        def fake_get(url, **kwargs):
+            captured.update(kwargs.get("params") or {})
+            captured["_url"] = url
+            return _Resp()
+
+        monkeypatch.setattr(em_client, "em_get", fake_get)
+        return captured
+
+    def test_fetch_historical_kline_accepts_code(self, monkeypatch):
+        """关键回归：route('historical_kline', code=...) 必须能路由到备源。"""
         from tradex.data_sources import akshare_fetchers
 
-        fake_df = MagicMock()
-        fake_df.empty = False
-        with patch.object(akshare_fetchers, "_ak") as mock_ak:
-            mock_ak.return_value.stock_zh_a_hist.return_value = fake_df
-            # 用 code= 调用（eltdx_data.py 的调用方式）
-            result = akshare_fetchers.fetch_historical_kline(code="600519")
-            # 验证 akshare 收到的 symbol 是 600519
-            call_kwargs = mock_ak.return_value.stock_zh_a_hist.call_args[1]
-            assert call_kwargs["symbol"] == "600519"
+        captured = self._patch_kline_source(monkeypatch)
+        # 用 code= 调用（eltdx_data.py 的调用方式）
+        result = akshare_fetchers.fetch_historical_kline(code="600519")
 
-    def test_fetch_historical_kline_symbol_overrides_code(self):
+        assert not result.empty
+        assert captured["secid"] == "1.600519", "code= 应归一化后到达源站"
+
+    def test_fetch_historical_kline_symbol_overrides_code(self, monkeypatch):
         from tradex.data_sources import akshare_fetchers
 
-        fake_df = MagicMock()
-        fake_df.empty = False
-        with patch.object(akshare_fetchers, "_ak") as mock_ak:
-            mock_ak.return_value.stock_zh_a_hist.return_value = fake_df
-            akshare_fetchers.fetch_historical_kline(symbol="600519", code="000001")
-            call_kwargs = mock_ak.return_value.stock_zh_a_hist.call_args[1]
-            assert call_kwargs["symbol"] == "600519"
+        captured = self._patch_kline_source(monkeypatch)
+        akshare_fetchers.fetch_historical_kline(symbol="600519", code="000001")
+
+        assert captured["secid"] == "1.600519", "symbol 应优先于 code"
 
 
 class TestHttpFetcherParamCompat:

@@ -9,7 +9,11 @@
 设计原则：
   - 每个 fetch_fn 接受 **kwargs，返回 DataFrame（统一格式）
   - 失败时返回空 DataFrame，不抛异常（容错设计）
-  - 仅使用 curl_cffi（requests 兼容层），不引入其他第三方依赖
+  - 所有直连请求统一走 antiban_http 具名客户端（指纹伪装 + 节流 + 退避重试）
+
+v3.3.20：cls.cn / 巨潮 / 新浪三处由「各自裸 curl_cffi 调用」收敛到
+`get_client("cls"|"cninfo"|"sina")`。其中巨潮两处 POST **原先完全没有指纹伪装**，
+是本次改造的主要漏洞点。
 """
 
 from __future__ import annotations
@@ -23,7 +27,10 @@ from typing import Any
 from urllib.parse import urlencode
 
 import pandas as pd
-from curl_cffi import requests as curl_requests
+
+from astock_signals.antiban_http import get_client
+
+from .em_client import em_get
 
 logger = logging.getLogger("tradex.news")
 
@@ -81,7 +88,10 @@ def fetch_em_news_direct(symbol: str = "", code: str = "", **kwargs) -> pd.DataF
             "Referer": "https://so.eastmoney.com/news/s?keyword=" + sym,
             "Accept": "*/*",
         }
-        resp = curl_requests.get(url, params=params, headers=headers, timeout=_TIMEOUT, impersonate="chrome120")
+        # v3.3.19：东财接口统一走 em_get（指纹伪装 + 全局节流 + 退避重试）
+        resp = em_get(url, params=params, headers=headers, timeout=_TIMEOUT)
+        if resp is None:
+            raise RuntimeError("em_news_direct: 东财请求重试耗尽")
         resp.raise_for_status()
 
         # 解析 JSONP 响应：去掉 callback 包裹
@@ -175,7 +185,10 @@ def fetch_cls_telegraph(num_results: int = 20, **kwargs) -> pd.DataFrame:
             "User-Agent": _UA,
             "Referer": "https://www.cls.cn/telegraph",
         }
-        resp = curl_requests.get(url, params=params, headers=headers, timeout=_TIMEOUT, impersonate="chrome120")
+        # v3.3.20：收敛到具名客户端（指纹伪装 + 节流 + 退避重试）
+        resp = get_client("cls").get(url, params=params, headers=headers, timeout=_TIMEOUT)
+        if resp is None:
+            raise RuntimeError("cls_telegraph: 财联社请求重试耗尽")
         resp.raise_for_status()
 
         data = resp.json()
@@ -272,7 +285,10 @@ def fetch_cninfo_direct(
                 post_data["stock"] = f"{sym},{org_id}"
                 post_data["column"] = "szse"
 
-        resp = curl_requests.post(url, data=post_data, headers=headers, timeout=_TIMEOUT)
+        # v3.3.20：收敛到具名客户端（此前无任何指纹伪装）
+        resp = get_client("cninfo").post(url, data=post_data, headers=headers, timeout=_TIMEOUT)
+        if resp is None:
+            raise RuntimeError("cninfo_direct: 巨潮请求重试耗尽")
         resp.raise_for_status()
 
         result = resp.json()
@@ -337,7 +353,10 @@ def _resolve_org_id(symbol: str) -> str:
             "X-Requested-With": "XMLHttpRequest",
         }
         data = {"keyWord": symbol, "maxNum": 5}
-        resp = curl_requests.post(url, data=data, headers=headers, timeout=_TIMEOUT)
+        # v3.3.20：收敛到具名客户端（此前无任何指纹伪装）
+        resp = get_client("cninfo").post(url, data=data, headers=headers, timeout=_TIMEOUT)
+        if resp is None:
+            raise RuntimeError("_resolve_org_id: 巨潮请求重试耗尽")
         resp.raise_for_status()
         result = resp.json()
 
@@ -390,7 +409,10 @@ def fetch_sina_finance_news(num_results: int = 20, **kwargs) -> pd.DataFrame:
             "Referer": "https://finance.sina.com.cn/",
             "Accept": "application/json",
         }
-        resp = curl_requests.get(url, params=params, headers=headers, timeout=_TIMEOUT)
+        # v3.3.20：收敛到具名客户端（指纹伪装 + 节流 + 退避重试）
+        resp = get_client("sina").get(url, params=params, headers=headers, timeout=_TIMEOUT)
+        if resp is None:
+            raise RuntimeError("sina_finance_news: 新浪请求重试耗尽")
         resp.raise_for_status()
 
         data = resp.json()

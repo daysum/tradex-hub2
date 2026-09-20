@@ -51,25 +51,44 @@ class TestAksharePeriodNormalization:
         assert _normalize_ak_period("weird") == "weird"
         assert _normalize_ak_period("") == ""
 
-    def test_fetch_historical_kline_applies_normalization(self):
-        """核心回归：fetch_historical_kline 必须把 day 归一成 daily 再传给 akshare。
+    def test_fetch_historical_kline_applies_normalization(self, monkeypatch):
+        """核心回归：fetch_historical_kline 必须把 day 归一成 daily 再传给源站。
 
         修复前直接透传 period='day' → akshare period_dict['day'] KeyError，
         导致 eltdx 主源失败时降级链断裂。
+
+        v3.3.27：本函数已由 akshare 改为本项目直连，注入点从
+        `ak.stock_zh_a_hist` 变为 `em_client.em_get`；测试意图不变 ——
+        验证**归一化后的周期确实传到了源站**（体现为 klt 编码）。
         """
+        from tradex.data_sources import em_client
+
         captured = {}
 
-        def fake_hist(**kwargs):
-            captured.update(kwargs)
-            return MagicMock()
+        class _Resp:
+            status_code = 200
 
-        with patch("akshare.stock_zh_a_hist", side_effect=fake_hist):
-            fetch_historical_kline(code="600000", period="day")
-        assert captured["period"] == "daily"
+            def raise_for_status(self):
+                pass
 
-        with patch("akshare.stock_zh_a_hist", side_effect=fake_hist):
-            fetch_historical_kline(code="600000", period="weekly")
-        assert captured["period"] == "weekly"
+            def json(self):
+                return {"rc": 0, "data": {"klines": [
+                    "2026-09-18,1262.99,1257.12,1265.88,1256.10,24891,3135849216,"
+                    "0.77,-0.78,-9.86,0.20,0"
+                ]}}
+
+        def fake_get(url, **kwargs):
+            captured.clear()
+            captured.update(kwargs.get("params") or {})
+            return _Resp()
+
+        monkeypatch.setattr(em_client, "em_get", fake_get)
+
+        fetch_historical_kline(code="600000", period="day")
+        assert captured["klt"] == "101", "day → daily → klt=101"
+
+        fetch_historical_kline(code="600000", period="weekly")
+        assert captured["klt"] == "102", "weekly → klt=102"
 
 
 # ============================================================

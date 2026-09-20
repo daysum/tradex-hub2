@@ -25,14 +25,9 @@ import os
 import time
 from typing import Any
 
-import requests as _requests
+from .anti_ban_client import em_get
 
 logger = logging.getLogger(__name__)
-
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
 
 _PUSH2DELAY_URL = "https://push2delay.eastmoney.com/api/qt/clist/get"
 
@@ -190,7 +185,7 @@ def _get_region_boards() -> dict[str, str]:
     boards: dict[str, str] = {}
     page = 1
     while True:
-        r = _requests.get(
+        r = em_get(
             _PUSH2DELAY_URL,
             params={
                 "pn": str(page),
@@ -202,9 +197,12 @@ def _get_region_boards() -> dict[str, str]:
                 "fs": "m:90+t:1",  # region boards
                 "fields": "f12,f14",
             },
-            headers={"User-Agent": _UA},
+            headers={"Referer": "https://quote.eastmoney.com/"},
             timeout=10,
         )
+        if r is None:
+            logger.warning("push2delay region boards: 请求重试耗尽 (page %d)", page)
+            break
         d = r.json()
         items = d.get("data", {}).get("diff", [])
         if not items:
@@ -230,7 +228,7 @@ def _query_board_for_stock(bk_code: str, target_code: str) -> dict[str, str] | N
 
     Returns dict with name, industry, concepts keys, or None if not found.
     """
-    r = _requests.get(
+    r = em_get(
         _PUSH2DELAY_URL,
         params={
             "pn": "1",
@@ -242,9 +240,11 @@ def _query_board_for_stock(bk_code: str, target_code: str) -> dict[str, str] | N
             "fs": f"b:{bk_code}",
             "fields": "f12,f14,f100,f102,f103",
         },
-        headers={"User-Agent": _UA},
+        headers={"Referer": "https://quote.eastmoney.com/"},
         timeout=10,
     )
+    if r is None:
+        return None
     d = r.json()
     items = d.get("data", {}).get("diff", [])
     for item in items:

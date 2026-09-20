@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tradex"
-version = "3.3.18"
+version = "3.3.29"
 description = "China Financial Data MCP Server based on AKShare - Free alternative to commercial financial data MCPs"
 readme = "README.md"
 license = "Apache-2.0"
@@ -35,6 +35,9 @@ dependencies = [
     "requests>=2.28.0",
     "stockstats>=0.6.0",
     "python-dotenv>=1.0.0",
+    # TLS 指纹伪装（东财/腾讯防限流）：此前仅靠 akshare 传递引入，
+    # akshare 一旦调整依赖即静默丢失，导致 import em_client 直接 ImportError
+    "curl_cffi>=0.6.0",
 ]
 
 [project.optional-dependencies]

@@ -16,18 +16,32 @@ import os
 import logging
 from datetime import datetime
 
-import requests as _requests
+from .antiban_http import get_client, json_of
 
 logger = logging.getLogger(__name__)
 
+# 同花顺 hsgtApi（data.hexin.cn）请求头。
+# UA 由统一客户端按指纹自动设置，此处只保留服务端校验的 Host/Referer。
 _HSGT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "Chrome/117.0.0.0 Safari/537.36"
-    ),
     "Host": "data.hexin.cn",
     "Referer": "https://data.hexin.cn/",
 }
+
+_HSGT_URL = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
+
+
+def _fetch_hsgt_daychart() -> dict:
+    """拉取沪深股通当日分时净买入。
+
+    v3.3.20：由裸 requests 收敛到统一防封层（指纹伪装 + 节流 + 退避重试）。
+
+    Raises:
+        RuntimeError: 请求重试耗尽。
+    """
+    r = get_client("ths").get(_HSGT_URL, headers=_HSGT_HEADERS, timeout=10)
+    if r is None:
+        raise RuntimeError("同花顺 hsgtApi 请求重试耗尽")
+    return json_of(r, fallback_encoding="gbk")
 
 # Local cache for daily northbound close snapshots
 _CACHE_DIR = os.path.join(os.path.expanduser("~"), ".workbuddy", "cache")
@@ -105,9 +119,7 @@ def get_northbound_flow(
     got_realtime = False
 
     try:
-        url_rt = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
-        r = _requests.get(url_rt, headers=_HSGT_HEADERS, timeout=10)
-        d = r.json()
+        d = _fetch_hsgt_daychart()
 
         times = d.get("time", [])
         hgt = d.get("hgt", [])
@@ -195,9 +207,7 @@ def get_northbound_flow_json(
     }
 
     try:
-        url_rt = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
-        r = _requests.get(url_rt, headers=_HSGT_HEADERS, timeout=10)
-        d = r.json()
+        d = _fetch_hsgt_daychart()
 
         times = d.get("time", [])
         hgt = d.get("hgt", [])

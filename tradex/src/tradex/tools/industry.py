@@ -22,6 +22,12 @@ from ..data_sources import get_router
 from ..utils.cache import TTL_DAILY, cache
 from ..utils.formatter import df_to_json, error_response, slim_df
 
+# board_industry_cons_em 首次调用需翻页建「板块名 → BK 代码」映射
+# （服务端把 pz 硬顶在 100，而行业板块 496 个 / 概念板块 504 个），
+# 实测首次约 10s，超过默认 12s 路由超时 → 该 endpoint 单独放宽。
+# 映射按进程缓存并支持断点续取，后续调用 ~1s。
+_BOARD_CONS_ROUTE_TIMEOUT = 40.0
+
 _router = get_router()
 
 
@@ -76,7 +82,8 @@ def register(mcp: FastMCP):
 
         try:
             df, _src = _router.route(
-                "industry_data", endpoint="board_industry_cons_em", industry=industry
+                "industry_data", endpoint="board_industry_cons_em", industry=industry,
+                timeout=_BOARD_CONS_ROUTE_TIMEOUT,
             )
             df = slim_df(df)
             result = df_to_json(df)

@@ -4,6 +4,501 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 
+## [3.3.29] - 2026-09-20
+
+### Fixed
+
+- **`board_industry_hist_em`（行业历史行情）恢复可用 —— `industry_data` 的 7 个 endpoint
+  至此全部有可用源，`docs/known-issues.md` 的 B 组彻底清零。**
+
+  该 endpoint 此前**两个源都不覆盖**：主源 akshare 打
+  `7.push2his.eastmoney.com/api/qt/stock/kline/get`（`secid=90.BKxxxx`），
+  而东财板块日K路由**整条链路故障**（实测所有 `push2his*` 主机连接被拒；
+  `push2delay` 认得出板块 —— 返回 `name='酿酒概念'` —— 但 `klines` 为空）；备源 ths 明确不支持。
+
+  **换数据来源解决**：实测**同花顺板块K线免鉴权可用**：
+  ```
+  d.10jqka.com.cn/v6/line/bk_{code}/{seg}/last.js     → 最近 ~140 根
+  d.10jqka.com.cn/v6/line/bk_{code}/{seg}/{year}.js   → 某年全量
+  ```
+  JSONP 载荷：`quotebridge_v6_line_bk_xxx_01_last({"year":{...},"name":"白酒","data":"..."})`，
+  `data` 每行 `日期,开,高,低,收,成交量,成交额,...`（**同花顺顺序：开高低收**）。
+
+  实测确认的细节：
+  - **周期分段码**：`01`=日K、`11`=周K、`21`=月K
+  - **板块代码**：行业 `881xxx`（白酒=881273、半导体=881121）；载荷里的 `name`
+    字段可用于校验「代码 ↔ 名称」映射
+  - 同花顺板块K线**不提供换手率**（该列恒为空，不是 0）；
+    涨跌幅/涨跌额/振幅按**前一根收盘**计算
+
+- **实现放在 `ths_fetchers.fetch_ths_board_hist`**（10jqka 域名的传输归该模块管，
+  AST 静态守卫也只允许它直连 `10jqka.com.cn`），`akshare_fetchers` 委托调用。
+
+- **降级顺序刻意是「同花顺优先 → 东财兜底」**。若把东财放前面，每次冷启动都要先做
+  一遍昂贵的「板块名 → BK 代码」解析（翻 496 行业 + 504 概念）再失败 ——
+  实测首调用因此要 **24s**，超过路由默认超时；同花顺则 **1.5s** 返回。
+  东财层保留为兜底：待其板块日K恢复后换回顺序即可拿回**换手率**列。
+
+### Added
+
+- `tests/test_board_hist_direct.py`（22 条）：JSONP 解析、**开高低收顺序**、
+  涨跌幅/振幅按前收计算、换手率恒空、周期分段码映射、日期区间过滤、
+  **按年补数**（start_date 早于 last.js 覆盖范围）、降级顺序（同花顺优先时不碰东财）、
+  两层皆失败的错误汇总，以及回归守卫（不得再调 akshare）
+
+### 验证
+
+- `pytest -m "not network"`：**770 passed / 7 deselected / 0 failed**（基线 748 + 新增 22）
+- 真实网络：`白酒` 日k→140 行、周k→400、月k→95；`半导体` 日k→140、周k→979、月k→230；
+  代码直传 `881273` 结果一致；日期区间 `20260601~20260918` → 79 行（首末日期准确）
+- 端到端：`get_industry_pe(industry="白酒")` → **error=None**（修复前恒报 All sources failed）
+- **`live_smoke.py` 的 endpoint 扫描：`industry_data` 的「无可用源组合」清单已清零**
+
+## [3.3.28] - 2026-09-20
+
+### Fixed
+
+- **`industry_data` 的 `board_industry_cons_em`（行业板块成分股）恢复可用**，
+  `get_industry_stocks` / `get_competitors` 两个工具从「恒报 All sources failed」变为正常返回。
+
+  此前该 endpoint **两个源都不覆盖**：主源 akshare 用裸 requests 打
+  `29.push2.eastmoney.com/api/qt/clist/get` 被拒连；备源 ths **明确不支持**。
+  实测 `push2delay.eastmoney.com` 的 clist 可取到（经 `em_get` 走镜像）→ 改本项目直连。
+
+  排查中还揪出 **akshare 原版的两个隐藏缺陷**（即便它的传输正常也会失败）：
+
+  1. **只搜「行业板块」，漏了「概念板块」**。实测 `白酒` / `新能源车`
+     只存在于**概念板块**（BK0896 等），而 `银行` / `半导体` 在行业板块。
+     但调用方 `get_industry_stocks` 的 docstring 明确把
+     「白酒 / 新能源车」列为合法输入 → 必然找不到。本实现**两类板块都检索**。
+  2. **板块列表只取第一页**。服务端把 `pz` **硬顶在 100**（实测传 600/1000 仍返回 100），
+     而行业板块 496 个、概念板块 504 个 → 只看第一页会把靠后的名字误判为不存在。
+     本实现**翻页**，并做**可断点续取的进程内缓存**（首次约 10s，之后 ~1s）。
+
+  另：字段映射改为**按字段名取**（`f12`/`f14`/`f2`/`f3`/`f15`…），
+  akshare 原版按位置赋列名，依赖响应 key 的精确顺序 + `fetch_paginated_data`
+  里 `reset_index()` 插入的那一列（32 字段 + index = 33 列），上游改序即错位。
+
+- **`board_industry_cons_em` 路由超时单独放宽到 40s**。首次调用需翻页建
+  「板块名 → BK 代码」映射（实测约 10s），逼近默认 12s 路由超时 →
+  在两个调用点（`industry.py` / `company_info.py`）显式传 `timeout`，
+  与既有 `fund_hold` 的 `_FUND_HOLD_ROUTE_TIMEOUT` 做法一致。
+
+### Added
+
+- `tests/test_board_industry_cons_direct.py`（16 条）：BK 代码直通、
+  行业/概念两类板块解析、**翻页找到第 2 页的名字**、缓存命中零请求、
+  **断点续取**（第二次从上次的页码继续而非重来）、字段按名映射（乱序 key 不错位）、
+  成分股分页、排序与序号、失败路径，以及回归守卫（不得再调 akshare）
+
+### 验证
+
+- `pytest -m "not network"`：**748 passed / 7 deselected / 0 failed**（基线 732 + 新增 16）
+- 真实网络：`白酒`→45 只、`银行`→42、`半导体`→186、`新能源车`→**716**（跨 8 页）、
+  `BK0896` 直通；不存在的名字给出明确错误并列出已检索的两类板块规模
+- 端到端：`get_industry_stocks(industry="白酒")` → **45 条 / error=None**（修复前恒失败）；
+  `get_competitors(symbol="600519", industry="白酒")` → 30 条 / error=None
+- 缓存效果：首次 ~10s（含镜像发现与翻页）→ 后续 **~1.1s**
+
+## [3.3.27] - 2026-09-20
+
+### Fixed
+
+- **`historical_kline` 备源恢复可用**。改为**本项目直连两层降级**：
+
+  1. **东财 push2his kline**（走 `em_get`，享节流/重试/镜像/熔断）——
+     与 akshare 同源同字段，复权与振幅/涨跌幅由上游原生给出
+  2. **腾讯 `proxy.finance.qq.com`**（实测可用）—— 兜底
+
+  **为什么必须加第 2 层**：实测东财的日K路由**整体不可用** ——
+  `push2his.eastmoney.com` 连接被拒（10/10 失败），
+  `push2delay.eastmoney.com` 该路径返回 `rc=0` 但 **`klines` 为空**
+  （它只服务分时）。所以只把 akshare 换成直连东财**仍然取不到数**，
+  腾讯兜底才是让这个源今天就能工作的关键。
+
+  **字段语义已用主源 `eltdx` 逐字段交叉验证**（2026-09-18 / 600519）：
+  腾讯 bar `[1]`开 `[2]`收 `[3]`高 `[4]`低 `[5]`成交量(手) `[7]`换手率 `[8]`成交额(**万元**)
+  —— 与 eltdx 的 开盘 1262.99 / 收盘 1257.12 / 最高 1265.88 / 最低 1256.10 /
+  量 24890.87 / 额 3,135,849,216 元 完全吻合。腾讯**不提供**振幅/涨跌幅/涨跌额，
+  按前一根收盘价自行计算；成交额由万元换算为元（与东财/eltdx 口径统一）。
+
+  **顺带规避的第二个问题**：akshare 用「按位置赋列名」把逗号串映射成中文列名，
+  一旦上游调整 `fields2` 顺序或字段缺失就会整体错位（v3.3.16 fund_hold 同类事故）。
+  本实现虽同样按位置切分（逗号串没有 key 可依），但**显式校验字段个数**
+  （不足 11 个的行直接丢弃），避免「少一列 → 整体错位」的静默污染。
+
+  输出列与 akshare `stock_zh_a_hist` **完全一致**（12 列，含顺序）：
+  `日期 / 股票代码 / 开盘 / 收盘 / 最高 / 最低 / 成交量 / 成交额 / 振幅 / 涨跌幅 / 涨跌额 / 换手率`
+
+### Added
+
+- `tests/test_historical_kline_direct.py`（27 条）：两层降级、列名与顺序、
+  腾讯万元→元换算、按前收计算涨跌幅/振幅、乱序 bar 排序、日期区间过滤、
+  周期键（day/week/month）、symbol 归一化、字段不完整行丢弃、失败原因汇总，
+  以及回归守卫（不得再调 akshare `stock_zh_a_hist`）
+
+### 顺带修复
+
+- **`test_concurrent_calls_respect_min_interval` 偶发假失败**（flaky）。
+  原测试在各线程 `acquire()` **返回之后**才打墙钟点，线程在这两步之间被 OS 抢占
+  就会让记录间隔小于真实间隔（单独跑必过、全量跑偶挂，本次实测复现 1 次）。
+  改为断言节流器**内部预定的时间戳**（`_last_call`）——
+  预定量才是真正决定实际间隔的机制，且断言是**确定性**的。
+  已验证：加固后连跑 5 次稳定通过，且**仍能抓到真回归**
+  （把 interval 置 0 时断言失败）。
+
+- **`scripts/live_smoke.py` 新增 endpoint 扫描 + 跨源聚合**。
+  起因：核查「`industry_data` 的 ths 备源是否可用」时发现
+  **「类型级 OK」会骗人** —— 报告里 `industry_data / ths` 是 `OK (90,2)`，
+  但那只是**默认 endpoint**（板块列表）的结果；同一个类型的
+  `board_industry_cons_em`（行业成分股）/ `board_industry_hist_em`（行业历史行情）
+  **两个源都不覆盖**，导致 `get_industry_stocks` / `get_industry_pe` /
+  `get_competitors` 三个工具全在报「All sources failed」。
+
+  改动：
+  1. `ENDPOINT_SWEEP`：凡 fetcher 带 `endpoint` 形参的类型，**逐 endpoint 各测一遍**
+     （`industry_data` 7 个 endpoint 全覆盖）
+  2. 新增 `UNSUPPORTED` 状态：源**明确声明**不支持该 endpoint（覆盖缺口，非代码回归），
+     与 `FAIL` 区分开
+  3. 新增 `endpoints_without_source()`：**跨源聚合**，列出「所有源都拿不到数据」的
+     `(类型, endpoint)` 组合 —— 这才是多 endpoint 类型的关键结论。
+     实测输出：
+     ```
+     industry_data[board_industry_cons_em]  [AKSHARE, UNSUPPORTED]
+     industry_data[board_industry_hist_em]  [AKSHARE, UNSUPPORTED]
+     ```
+     （`sector_fund_flow_rank` 未被列出 —— 主源 akshare 经 `em_get` 可取到，正确排除）
+
+### 验证
+
+- `pytest -m "not network"`：**732 passed / 7 deselected / 0 failed**（基线 705 + 新增 27）
+- 真实网络：`fetch_historical_kline("600519", daily, 20260910~20260918)` → **7×12**
+  （修复前 FAIL），数值与 eltdx 主源逐字段吻合；日/周/月 × qfq/hfq/不复权 全通；
+  稳态 0.18s（首次 5.9s 含东财尝试与熔断）
+- 经 SmartRouter 仍命中主源 `eltdx`（100×7）
+- 3 条旧测试（参数归一化）按**原意图**改写注入点（`ak.stock_zh_a_hist` → `em_client.em_get`），
+  意图不变：验证归一化后的 symbol/period 确实到达源站
+
+## [3.3.26] - 2026-09-20
+
+### Fixed
+
+- **`industry_comparison` 备源（东财行业资金流）恢复可用，并修掉一处隐藏的数据错误**。
+
+  **① 传输层**：akshare 的 `stock_sector_fund_flow_rank` 用裸 requests 打
+  `push2.eastmoney.com/api/qt/clist/get` —— 正是本项目统一入口**已覆盖且已配镜像**
+  的路径（实测裸 requests `RemoteDisconnected`，经 `em_get` 200 走 push2delay）。
+  改为**本项目直连**，与 em_push2 源共用同一路径与镜像。
+
+  **② 数据正确性（更严重，被传输失败掩盖了）**：旧代码读 akshare 的
+  `板块` / `涨跌幅` / `领涨股票` 三列，但**这三个列名在 akshare 的实际输出里都不存在**
+  （真名是 `名称` / `今日涨跌幅` / `今日主力净流入最大股`）。
+  也就是说 —— **即便 akshare 的传输没坏，它返回的也会是**
+  `name="None"`、`change_pct=0.0`、`leader="None"` 这样的垃圾数据。
+  传输一直失败反而让人以为「修好网络就行了」。
+  直连版按**字段名**取（`f14` / `f3` / `f204`），返回真实值。
+
+  **③ 顺带补齐**：旧实现因 akshare 字段集不含 `f104`/`f105` 而写死
+  `up_count/down_count = 0`；本实现在 fields 里补上这两项，返回**真实的涨跌家数** ——
+  更贴近本函数「与 em_push2 源相同的 dict 结构」的既定契约
+  （em_push2 源本就是从 f104/f105 取的）。
+
+  另：结果按主力净流入降序（`fid0=f62`），故只取够 `top_n` 的页数，
+  不像 akshare 那样把全部分页拉完。
+
+### Added
+
+- `tests/test_industry_comparison_direct.py`（15 条）：输出结构、请求契约、
+  分页边界（`top_n=150` 跨页）、失败路径，以及两条回归守卫 ——
+  ① 不得再调 akshare；② **输出不得退化成旧实现的 `"None"`/`0.0`**
+
+### 验证
+
+- `pytest -m "not network"`：**705 passed / 7 deselected / 0 failed**（基线 690 + 新增 15）
+- 真实网络：`fetch_industry_comparison(top_n=5)` → 5 个行业，含真实涨跌家数
+  （航空机场 涨1.05% 13涨0跌 领涨中国东航）；`top_n=150` → 150 条（跨 2 页）
+- 三个源全部可用：`em_push2` 100 条、`akshare` 10 条（修复前 FAIL）、`ths_flow` 10 条；
+  经 SmartRouter 仍命中主源 `em_push2`
+
+## [3.3.25] - 2026-09-20
+
+### Fixed
+
+- **`minute_data` 备源（东财分时）恢复可用**。`akshare` 源此前恒失败，根因有两层：
+  1. akshare 的 `stock_intraday_em` 打 **`70.push2.eastmoney.com`** —— 带数字前缀的
+     子域**没有配镜像**，节点故障时无路可退
+  2. 它用的是 **`/api/qt/stock/details/sse`（SSE 长连接）**：服务端把整包塞在首个
+     事件后**不主动关闭**。非流式 GET 会阻塞到超时（实测 10s 必超时）；
+     即便 `stream=True` 读到首个事件就 break，**`resp.close()` 仍会去排空剩余
+     响应体**（curl 为复用连接），实测 **close() 独占 8.6s**
+
+  改为打 **`push2.eastmoney.com`**（有 push2delay 镜像）的
+  **`/api/qt/stock/details/get` 非流式变体** —— 实测 200 / **0.28s**，载荷与
+  SSE 首个事件一致。稳态 1.25s（流式版需 10.6s，**快 8 倍**）。
+
+### 说明（排查过程）
+
+排查时先按「流式读取」实现了一版（新增 `em_stream_json`），功能正确但耗时 10.6s。
+定位到瓶颈在 `resp.close()` 后，**改为寻找非流式变体**，确认 `/details/get` 可用，
+于是**撤掉了整套流式实现**（含 `em_stream_json` / `_read_first_sse_event` /
+`_stream_once` 及配套 import）—— 用 `em_get` 更简单、更快、且复用已有的
+镜像与熔断。**结论：东财同一份数据常同时提供 `/get` 与 `/sse` 两个变体，
+优先用 `/get`。**
+
+另修正一处 secid 归一化：显式市场前缀优先于首位数字推断
+（`sh000001` 是上证指数，市场码须为 1；只按首位数字猜会判成深市 0 → 空明细。
+akshare 原版就有这个毛病）。
+
+### Added
+
+- `tests/test_minute_data_direct.py`（19 条）：解析与买卖盘映射、**接口选择守卫**
+  （不得用 `/sse`、不得用 `70.push2`）、secid 归一化、失败路径、
+  **回归守卫**（不得再调用 akshare `stock_intraday_em`）
+
+### 验证
+
+- `pytest -m "not network"`：**690 passed / 7 deselected / 0 failed**（基线 671 + 新增 19）
+- 真实网络：`fetch_minute_data("600519")` → **3955×4**（修复前 FAIL），
+  列 `时间/成交价/手数/买卖盘性质`；`000001`→4184、`sh000001`(上证指数)→4746、
+  `300750`→4840、`688981`→4913（各入参形式均正确解析 secid）
+- 经 SmartRouter：仍命中主源 `eltdx`（240×4），备源 akshare 恢复可用
+
+## [3.3.24] - 2026-09-20
+
+### Fixed
+
+- **`hot_rank` 主源（东财人气榜）恢复可用**。`fetch_hot_rank_data` 的 `rank` / `up`
+  两个 endpoint 此前恒失败。**根因不是「源挂了」**，而是 akshare 的实现分两步：
+  1. 裸 `requests` POST `emappdata.eastmoney.com/stockrank/*` 取榜单（**实测可达**）
+  2. 裸 `requests` GET `push2.eastmoney.com/api/qt/ulist.np/get` 取行情（**被拒连**）
+
+  而**同一个 URL 经 `em_get` 可正常取到**（自动走 push2delay 镜像）——
+  也就是说这两个榜单本可用，只是 akshare 绕过了统一防封层。
+  现改为**本项目直连**（`emappdata` 走新增的 `em_post`，行情走 `em_get`）。
+
+  其余 5 个 endpoint（`detail` / `realtime` / `keyword` / `latest` / `relate`）
+  只打 emappdata（实测可达），仍走 akshare。
+
+### Added
+
+- **`em_post()`**：东财统一 POST 入口。把 `em_get` 的编排逻辑抽成共用的
+  `_em_request(method, ...)`，使 **POST 接口同样享有节流 / 退避重试 / 主机镜像 /
+  失败熔断** —— 否则 POST 类接口会成为绕过防封层的后门
+- `tests/test_hot_rank_direct.py`（21 条）、`em_post` 专项测试（4 条）
+
+### 注意（数据对齐）
+
+直连版**按代码 join 两个列表，而不是按位置对齐**：
+榜单（emappdata）与行情（ulist）是两个独立请求，条数或顺序都可能不一致
+（镜像 push2delay 对停牌股可能不返回行情）。按位置拼会让**代码与名称静默错位** ——
+正是 v3.3.16 `fund_hold` 列错位的同类事故。实测某只票缺行情时，
+按代码 join 仍能保证后续行不错位（有专门用例守着）。
+
+另：上游返回的 key 顺序与 `fields` 参数顺序**并不一致**
+（实测请求 `fields=f14,f3,f12,f2`，实际 key 顺序是 `f2,f3,f12,f14`）。
+akshare 按位置赋列名恰好蒙对；本实现一律**按字段名取**。
+
+### 验证
+
+- `pytest -m "not network"`：**671 passed / 7 deselected / 0 failed**（基线 645 + 新增 26）
+- 真实网络：`hot_rank` 主源 `akshare_hot_rank` → **100×6**（修复前 FAIL），
+  列 `当前排名/代码/股票名称/最新价/涨跌额/涨跌幅`；
+  `up` → **100×7**（含「排名较昨日变动」）；
+  经 SmartRouter 路由**命中主源**（修复前会降级到备源 `ths_hot`）
+- 稳态耗时 2.2s（首次 8.2s 含镜像发现，之后走镜像静默期）
+
+## [3.3.23] - 2026-09-20
+
+### Added
+
+- **东财请求失败熔断**（`em_get`，熔断器模式）：某个 **(主机, 路径)** 出现
+  **主机级失败**（连接失败 / 5xx）后进入冷却（默认 60s），期间**立即返回 `None`**，
+  让调用方直接走备源 —— 不再白跑满 `max_retries` 次退避
+  - **按「主机 + 路径」而非仅主机**（关键）：实测 `push2his` 是
+    「`kline/get` 挂了、`fflow/daykline/get` 还活着」，
+    按主机熔断会把同主机上**健康的路径**一起跳过，故障面反而扩大
+  - `403` / `429` / `rc=102` 是按 IP 风控，主机本身没问题 → **不熔断**
+  - 有镜像可切且镜像可用时走镜像静默期，不额外熔断主源
+  - 请求成功（或属正常业务结果如 `rc=100`）时解除该 `(主机,路径)` 的熔断标记
+  - 冷却到期自动重探（不会永久熔断）
+  - 新增 `reset_dead_hosts()` / `get_dead_host_status()` / `reset_host_health()`
+    与 `EM_DEAD_HOST_COOLDOWN`（默认 60，设 0 关闭）
+- `tests/test_em_dead_host_breaker.py`（17 条）：熔断触发与短路、
+  **按主机+路径的作用域**（含「同主机健康路径不被误伤」）、不该熔断的四种情形、
+  冷却管理、开关
+- `tests/conftest.py` 新增 autouse fixture：用例前后清空「镜像静默期 / 死主机冷却」。
+  这两份是模块级全局状态，不隔离会跨用例污染（`push2` 的 `/x` 被多个用例复用）
+
+### 验证
+
+- `pytest -m "not network"`：**645 passed / 7 deselected / 0 failed**（基线 628 + 新增 17）
+- 真实网络实测（`push2his` 日K路由仍处故障）：
+  ```
+  index_daily_amount 第1次 → 5 条  6.18s   ← 真实失败并触发熔断
+  index_daily_amount 第2次 → 5 条  0.18s   ← 短路，直走备源（快 34 倍）
+  index_daily_amount 第3次 → 5 条  0.22s
+  熔断状态: {'push2his.eastmoney.com/api/qt/stock/kline/get': 59.3}
+  ```
+
+## [3.3.22] - 2026-09-20
+
+### Fixed
+
+- **`index_daily_amount` 三层降级全失败**。主源 `push2his` 的日K路由挂掉后，
+  两条备源也一起失效，导致该数据类型完全不可用（实测 2026-09-20
+  `push2his` 日K路由 10/10 失败）：
+  - **备源1 修复**：原用 akshare 的 `stock_zh_index_daily_tx`，它**按年份逐年翻页**
+    （上证指数从 1990 年起 → 37 次请求 ≈ **21 秒**），在 SmartRouter 的 12s 超时下
+    必然失败 → 备源被误判为不可用。改为本项目直连腾讯
+    `proxy.finance.qq.com`（**单次请求 0.12s，快约 150 倍**），新增
+    `http_fetchers.fetch_index_daily_tencent()`
+  - 实测修复后：`fetch_index_daily_amount(symbol="sh000001", days=5)` → 返回 5 条
+- **撤回一处错误的镜像配置**（v3.3.21 引入过程中）：曾把 `push2his` 映到
+  `push2delay`，但**实测载荷不等价，已撤回**：
+  - `push2delay` 的 `kline/get`（日K `klt=101`）返回 `rc=0` 但 **`klines` 为空**
+    （它只服务 `klt=1` 分时）
+  - 日线资金流：`push2his` 返回 **5 条**，`push2delay` 只返回 **1 条** ——
+    映过去会把 5 条**静默降级成 1 条**
+  - 故 `_EM_HOST_MIRRORS` 只保留**载荷验证过等价**的 `push2`
+- **镜像降级增加「不服务该路径」保护**：镜像返回 404 等语义无效响应时，
+  **不进入静默期**并原样返回主源结果 —— 否则会把**健康的主源**也一起跳过，
+  故障面反而扩大（`push2delay` 对 `push2ex` 的 `getTopicZTPool` 就是 404）
+
+### Added
+
+- `http_fetchers.fetch_index_daily_tencent()`：腾讯指数历史日K直连
+  （单次请求、走加固传输层、支持跨年回退）。**`amount` 恒为 `None`** ——
+  该接口的成交额字段单位未能可靠确认，宁可为空也不给出可能错标的数据
+- `tests/test_index_daily_source.py`（16 条）：解析、symbol 归一化、
+  跨年回退、降级顺序、**回归守卫（不得再调用慢速的 akshare 按年翻页版本）**
+- AST 静态守卫域名从 8 个扩到 9 个（新增 `finance.qq.com`）
+- `docs/known-issues.md` 同步：`index_daily_amount` 移入「已修复」；
+  A 组结论更正为「`push2his` 日K路由无可用镜像，需换源」
+
+### 验证
+
+- `pytest -m "not network"`：**628 passed / 7 deselected / 0 failed**（基线 611 + 新增 17）
+- 真实网络：`fetch_index_daily_tencent("sh000001")` → 5 条 0.25s；
+  `fetch_index_daily_amount("sh000001", days=5)` → 5 条（修复前失败）
+- 镜像表保持最小：`{"push2.eastmoney.com": "push2delay.eastmoney.com"}`，
+  并有测试锁定「只放载荷验证过等价的主机」
+
+## [3.3.21] - 2026-09-20
+
+### Added
+
+- **东财主机镜像降级**（`em_get` 统一入口）：主源主机不可用时自动切换镜像主机，
+  默认 `push2.eastmoney.com` → `push2delay.eastmoney.com`
+  - **只在「连接层失败」或「5xx」时切换**：`403` / `429` / `rc=102` 是**按 IP** 的风控，
+    换主机没有任何用（实测 `slist` 在 `push2` 与 `push2delay` 上都返回 `rc=102`），
+    硬切只会让风控更糟，故明确不切
+  - **静默期**：镜像成功后进入冷却（默认 300s），期间直接走镜像，
+    避免每次调用都白等一遍死主机的退避。实测首次 6.38s（含主源 3 次退避）→
+    二次 1.15s，**快 5.5 倍**
+  - **两边都失败时不设静默期**，否则主源恢复后仍会被跳过
+  - 配套 `reset_host_mirrors()`（清空静默期，主源恢复后立即重探）与
+    `get_mirror_status()`（诊断用，返回各主机剩余静默秒数）
+  - 新增 3 个环境变量：`EM_HOST_MIRROR`(默认 1，设 0 关闭)、
+    `EM_PUSH2_MIRROR`(默认 push2delay.eastmoney.com)、`EM_MIRROR_COOLDOWN`(默认 300)
+- `tests/test_em_host_mirror.py`（17 条）：覆盖切换边界（该切/不该切）、静默期语义、
+  镜像也失败时的回退行为、开关、URL 不重复替换
+- **`docs/known-issues.md`**：数据源待修正清单。记录当前拿不到数据的源、
+  根因与建议修法，按优先级分组，含复检命令与已修复项（避免重复排查）。
+  配套脚本 `scripts/live_smoke.py` 可一键复检
+
+### Fixed
+
+- **push2 节点故障导致 6 处调用点全线失败**。实测 2026-09-20 `push2.eastmoney.com`
+  的 `/api/qt/clist/get` 路由返回 `curl: (56) Connection closed abruptly`
+  （**连命令行 curl 都是 HTTP 000**），而同主机的 `/api/qt/stock/fflow/kline/get`
+  正常、镜像主机 `push2delay` 全路由正常。此前无任何降级，导致
+  `industry_comparison`(em_push2) 报「东财返回空数据」，`limit_up_board`、
+  `em_client.fetch_stock_boards`、`em_push2_fund_flow` 等一并失效。
+  收敛在 `em_get` 后 6 处调用点**自动全部受益**，无需逐个改动
+- `http_fetchers.fetch_industry_quotes` 原有的 push2→push2delay 降级循环保留
+  （与统一层机制重叠但幂等，统一层会在内层先切成功，外层第二次迭代不会执行）
+
+### 验证
+
+- `pytest -m "not network"`：**601 passed / 7 deselected / 0 failed**（基线 584 + 新增 17）
+- 真实网络验证（`push2` 主源仍处故障状态下）：
+  `em_push2` → `rc=0` 5 个板块；`get_industry_comparison_json` → **100 个行业**（此前失败）；
+  `em_client.fetch_stock_boards` → `(28, 4)`；`em_push2_fund_flow` → 100 条分时；
+  `limit_up_board._em_clist_get` → 3000 条
+- 日志可观测：`em_get: push2.eastmoney.com 不可用（连接失败），切换镜像 …（静默 300s）`
+
+## [3.3.20] - 2026-09-18
+
+### Changed
+
+- **第二梯队数据源（同花顺 / 财联社 / 巨潮 / 新浪 / 问财）收敛到统一防封入口**。3.3.19 只加固了东财与腾讯，其余源仍是裸请求，其中三处问题明显：
+  - `data_sources/ths_fetchers.py` 用**模块级 `requests.Session()`** 裸请求 9 个同花顺接口（零指纹、零节流）
+  - `akshare_fetchers.fetch_profit_forecast`（registry `priority=1`，线上生效）用的是**残缺的伪造 Mac UA**（`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36`，无 Chrome/Safari 版本号）—— 这正是服务端识别伪造客户端的典型特征
+  - `news_fetchers.py` 巨潮两处 POST（`hisAnnouncement/query` + `topSearch/query`）**完全没有指纹伪装**
+  - 另 5 处同花顺裸请求：`hot_money.py`(×2)、`northbound.py`(×2)、`limit_up_board.py`(×1)；`wencai_fetchers.py` 裸 `urllib` POST
+
+### Added
+
+- **`ClientGroup` 抽象**（`antiban_http.py`）：一个数据源 = 一把节流器 + 一个指纹会话 + 一套重试参数，会话惰性创建（双重检查锁），命中限流自动换指纹重建
+  - **按源分设间隔**而非共用一把锁：东财 1.0s、同花顺 0.25s、财联社/巨潮 0.30s、新浪 0.25s、问财 0.50s。共用一把锁会让低风险源被高风险源的间隔拖慢
+  - **指纹真轮换**：固定指纹配置下也按指纹池顺序换下一个，而不是重复用同一个硬打
+- **具名客户端注册表** `get_client("ths"|"cls"|"cninfo"|"sina"|"wencai")`：进程内单例，`astock_signals` 与 `tradex` 两包共用同一实例；配套 `registered_clients()` / `reset_clients()`
+- **`json_of(resp, fallback_encoding=...)`**：宽松 JSON 解析。同花顺接口服务端**不声明 charset 但内容为 GBK**，curl_cffi 默认按 utf-8 解码会抛 `UnicodeDecodeError`；两种编码都失败时抛出带 `status` 与 body 片段的 `RuntimeError`，便于定位
+- **`NO_IMPERSONATE` 模式**：显式关闭指纹伪装（保留节流/重试）。指纹伪装并非对所有站点都是好事——**巨潮 cninfo.com.cn 的 WAF 恰好封禁常见浏览器指纹**（实测 `chrome120`/`chrome124` → 403，`None`/`chrome110`/`safari15_5` → 200），故 cninfo 走该模式
+- **静默限流识别**：`classify_response` 新增「HTTP 200 + 空 body → `throttled`」。JSON 接口返回 200 空体是典型的静默限流表现（同花顺高频请求下实测出现），此前被当作正常响应直接返回
+- **新增 5 组环境变量**：`THS_RATE_LIMIT_INTERVAL`(0.25) / `THS_MAX_RETRY`(2)、`CLS_RATE_LIMIT_INTERVAL`(0.30)、`CNINFO_RATE_LIMIT_INTERVAL`(0.30)、`SINA_RATE_LIMIT_INTERVAL`(0.25)、`WENCAI_RATE_LIMIT_INTERVAL`(0.50) / `WENCAI_MAX_RETRY`(1)，以及 `TIER2_IMPERSONATE`(chrome120)
+- `tests/test_antiban_tier2.py`（57 条）：注册表/ClientGroup 行为、`json_of` GBK 兜底、静默限流识别、11 处收敛行为断言，以及**扩展版 AST 静态守卫**
+
+### Fixed
+
+- **巨潮公告恢复可用**：`fetch_cninfo_direct` 此前（改造中途）因统一层默认套用 Chrome 指纹而返回 403 Forbidden、公告恒为空表；改走 `NO_IMPERSONATE` 后恢复（实测 `600519` 返回 5 条公告）
+- **AST 静态守卫覆盖全部数据源域名**：由东财/腾讯 2 个域名扩展到 8 个（+ 10jqka.com.cn / hexin.cn / cls.cn / cninfo.com.cn / sina.com.cn / iwencai.com）
+  - 守卫算法重写：按**真实传输对象**（import 进 requests/urllib/curl_cffi/httpx/aiohttp 的绑定名 + 模块级 `Session()` 变量）判定裸调用，避免把 `dict.get("key")` 误判为 HTTP 请求，同时**不再漏掉**「host 常量与裸调用分处不同语句」的写法（原实现正是因此漏掉了 `akshare_fetchers` 的腾讯裸请求）
+- 同花顺 GBK 接口不再依赖 `resp.encoding = "gbk"` 隐式行为，统一改为显式 `content.decode("gbk")` / `json_of(..., fallback_encoding="gbk")`
+
+### 验证
+
+- `pytest -m "not network"`：**584 passed / 7 deselected / 0 failed**（基线 527 + 新增 57 条）
+- 静态守卫：8 个数据源域名下**零**绕过统一入口的裸请求
+- 真实网络冒烟（10 个第二梯队接口全部返回真实数据）：同花顺热榜 100 条 / 涨停揭秘 77 条 / 涨跌分布 11 档 / 市场涨跌家数 `up=4234 down=1152 flat=167 limit_up=79` / 一致预期 EPS 3 行 / 热点归因 79 只 / 北向 370.47 亿；财联社电报 5 条、巨潮公告 5 条、新浪新闻 5 条
+- MCP 工具注册数不变：**129**
+
+## [3.3.19] - 2026-09-18
+
+### Changed
+
+- **东财/腾讯请求统一收敛为单一防封入口**（移植 `astock_scraper` 的 curl_cffi 指纹方案）。改造前本项目存在**四类绕过节流的请求路径**，全局限流形同虚设：
+  - `astock_signals/anti_ban_client.py` 用**裸 `requests`**（无任何 TLS 指纹伪装），东财可识别为脚本流量
+  - `em_client.py` 与 `anti_ban_client.py` **各持一把节流锁 + 一个 session**，同时取数时实际请求速率是设计值的 2 倍
+  - `akshare_fetchers.py` / `astock_signals_fetchers.py` / `news_fetchers.py` / `concept.py` 共 7 处**自建 curl_cffi 会话**（硬编码 UA/Referer，无限流无重试），其中 `concept.py` 的 `_get_region_boards()` 是**分页 while 循环且无任何间隔**
+  - `http_fetchers.py` 腾讯走 `urllib.request` + `User-Agent: Mozilla/5.0` **裸奔**，`_tencent_batch_quotes` 按 80 只/批循环拉全市场（约 68 个连续请求无间隔）
+
+### Added
+
+- **`astock_signals/antiban_http.py`**：统一防封 HTTP 层（指纹伪装 + 串行限流 + 指数退避重试 + 限流换指纹）
+  - 指纹池 8 个 Chrome 版本（120/124/131/136/142/145/146/150），**UA 与 impersonate 版本严格匹配**（不一致会被服务端识别为伪造）；指纹不被当前 curl_cffi 支持时回退 chrome120 而非崩溃
+  - `Throttle` 预定制节流器：锁内只计算并预定时间戳、`sleep` 在锁外执行，高并发下不退化为串行排队
+  - **东财 rc 语义识别**：`rc=102` 判为限流（换指纹 + 退避重试），`rc=100` 判为标的不存在（立即返回，不浪费重试）——此前两者都被当异常处理
+  - 指数退避 `min(2**attempt + jitter, 30)`，覆盖网络异常 / 403 / 429 / 5xx / rc=102
+- **腾讯传输层加固**：`http_fetchers._urlopen_no_proxy` 由 urllib 改为 curl_cffi 会话 + 节流（默认 0.15s + 抖动）+ 退避重试，保留 `.read()` 返回语义（调用方与既有测试零改动）；新增 `tencent_reset_session()`
+- **新增 2 个环境变量组**：`TENCENT_RATE_LIMIT_INTERVAL` / `TENCENT_JITTER_MIN` / `TENCENT_JITTER_MAX` / `TENCENT_MAX_RETRY`（默认 2，腾讯是兜底源，重试过多会拉长 worst case）；`EM_MAX_RETRY` 默认 1 → 3
+- **`curl_cffi>=0.6.0` 显式声明**：此前仅靠 akshare 传递引入，akshare 一旦调整依赖即静默丢失并导致 `import em_client` 直接 ImportError
+- `tests/test_antiban_http.py`（38 条）：指纹/UA 匹配、节流器串行与并发间隔、rc 语义、退避重试、GBK 解码
+- `tests/test_antiban_integration.py`（18 条）：含 **AST 静态守卫**——扫描源码确保没有模块绕过统一入口直接请求 eastmoney.com / gtimg.cn（防回退）
+
+### Fixed
+
+- `em_get` 重试耗尽时**返回 None 而非抛异常**穿透到 MCP 层；为 8 处调用点补 None 保护（`em_datacenter` / `em_push2*` / `fetch_market_breadth` / `fetch_industry_quotes` / `fetch_stock_boards` / `fetch_fund_hold_direct` 等），失败路径改为明确的 RuntimeError 或空结果
+- `em_client.fetch_stock_boards` 在东财请求失败时返回空 DataFrame，不再因 `None.raise_for_status()` 崩溃
+
+### 验证
+
+- `pytest -m "not network"`：**527 passed / 7 deselected / 0 failed**（基线 471 + 新增 56 条）
+- 静态守卫：东财 / 腾讯域名下**零**绕过统一入口的裸请求（改造前 11 处）
+- 核心逻辑独立验证：8 线程并发最小间隔 0.1996s（阈值 0.18s）；`rc=102` 重试 3 次且每次触发换指纹；`rc=100` 仅 1 次请求
+- 真实网络冒烟：东财 push2 `rc=0` 返回贵州茅台 1257.12（0.56s）；腾讯 GBK 正确解码，两源价格一致（1257.12）
+- MCP 工具注册回归：`list_tools()` 仍为 **129 个**，导入链无破坏
+
 ## [3.3.18] - 2026-09-18
 
 ### Fixed

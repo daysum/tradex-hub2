@@ -6,6 +6,8 @@ pydantic>=2.0.0
 requests>=2.28.0
 stockstats>=0.6.0
 python-dotenv>=1.0.0
+# TLS 指纹伪装（东财/腾讯防限流），此前仅靠 akshare 传递引入，易随上游变动丢失
+curl_cffi>=0.6.0
 # HTTP/SSE mode (optional)
 uvicorn>=0.29.0
 starlette>=0.37.0

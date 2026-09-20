@@ -6,29 +6,103 @@ HTTP 直连数据源 fetch_fn 包装器。
 
 全局行情（global_market_quote）通过腾讯 qt.gtimg.cn 批量获取，
 支持美股/大宗/亚太指数/外汇等外围行情。
+
+**v3.3.19 腾讯传输层加固**：原实现用 `urllib.request` + `User-Agent: Mozilla/5.0`
+裸奔——无 TLS 指纹伪装、无限流、无重试。批量拉全市场时会产生数十个无间隔连续请求
+（`_tencent_batch_quotes` 按 80 只/批循环），是潜在的限流触发点。
+现改为 curl_cffi 会话（浏览器指纹 + UA 版本匹配）+ 串行节流 + 指数退避重试，
+并保留 `.read()` 返回语义，调用方与既有测试无需改动。
 """
 
 from __future__ import annotations
 
+import json
 import logging
-import urllib.request
+import threading
 
 import pandas as pd
 
-logger = logging.getLogger("tradex.http")
-
-# 全局直连 opener（绕过系统代理，避免代理失败）
-_NO_PROXY_OPENER = urllib.request.build_opener(
-    urllib.request.ProxyHandler({}),
-    urllib.request.HTTPSHandler(),
+from astock_signals.antiban_http import (
+    TENCENT_JITTER_MAX,
+    TENCENT_JITTER_MIN,
+    TENCENT_MAX_RETRY,
+    TENCENT_MIN_INTERVAL,
+    Throttle,
+    get_bytes,
+    make_session,
 )
 
+logger = logging.getLogger("tradex.http")
 
-def _urlopen_no_proxy(url: str, timeout: int = 10) -> object:
-    """使用直连 opener 发起请求，绕过系统代理配置。"""
-    req = urllib.request.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0")
-    return _NO_PROXY_OPENER.open(req, timeout=timeout)
+# ---------------------------------------------------------------------------
+# 腾讯行情专用传输层（与东财节流器相互独立：两家的风控阈值不同）
+# ---------------------------------------------------------------------------
+_TENCENT_REFERER = "https://gu.qq.com/"
+
+_tencent_throttle = Throttle(
+    TENCENT_MIN_INTERVAL, TENCENT_JITTER_MIN, TENCENT_JITTER_MAX
+)
+_tencent_session = None
+_tencent_lock = threading.Lock()
+
+
+def _ensure_tencent_session():
+    """腾讯会话（懒加载、线程安全）：指纹伪装 + 直连绕代理。"""
+    global _tencent_session
+    if _tencent_session is None:
+        with _tencent_lock:
+            if _tencent_session is None:
+                _tencent_session = make_session(referer=_TENCENT_REFERER)
+    return _tencent_session
+
+
+def tencent_reset_session() -> None:
+    """关闭并重建腾讯会话（换 IP / 连续被限流后调用）。"""
+    global _tencent_session
+    with _tencent_lock:
+        if _tencent_session is not None:
+            try:
+                _tencent_session.close()
+            except Exception as e:  # noqa: BLE001
+                logger.debug("tencent_reset_session close error: %s", e)
+            _tencent_session = None
+
+
+class _TencentResponse:
+    """轻量响应对象，保留 `.read()` 语义（调用方按 GBK 解码）。
+
+    curl_cffi 的 Response 无 `.read()`，而既有调用方与测试都按
+    `resp.read().decode("gbk")` 取值，故做一层薄包装。
+    """
+
+    __slots__ = ("content", "status_code")
+
+    def __init__(self, content: bytes, status_code: int = 200) -> None:
+        self.content = content
+        self.status_code = status_code
+
+    def read(self) -> bytes:
+        return self.content
+
+
+def _urlopen_no_proxy(url: str, timeout: int = 10) -> _TencentResponse:
+    """腾讯行情接口请求：指纹伪装 + 串行节流 + 指数退避重试，直连不走代理。
+
+    保留原函数名与签名（`.read()` 返回字节），既是调用方接口也是测试注入点。
+
+    Raises:
+        RuntimeError: 重试耗尽仍失败（原 urllib 实现抛 URLError，语义一致）。
+    """
+    raw = get_bytes(
+        _ensure_tencent_session,
+        _tencent_throttle,
+        url,
+        timeout=timeout,
+        max_retries=TENCENT_MAX_RETRY,
+    )
+    if raw is None:
+        raise RuntimeError(f"tencent request failed: {url}")
+    return _TencentResponse(raw)
 
 
 def _tencent_quote_vals(code: str) -> list:
@@ -49,6 +123,86 @@ def _tencent_quote_vals(code: str) -> list:
     if '"' not in raw:
         raise RuntimeError("tencent quote: no data")
     return raw.split('"')[1].split("~")
+
+
+# ---------------------------------------------------------------------------
+# 腾讯指数日K（proxy.finance.qq.com，单次请求）
+# ---------------------------------------------------------------------------
+_TENCENT_KLINE_URL = "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get"
+
+
+def _to_tencent_index_sym(symbol: str) -> str:
+    """归一化成腾讯要的 sh000001 / sz399001 形式。"""
+    s = str(symbol).strip().lower()
+    if s[:2] in ("sh", "sz", "bj"):
+        return s
+    digits = s.split(".")[-1].zfill(6) if "." in s else s.zfill(6)
+    # 上证系列（000xxx / 999999）走 sh，其余走 sz
+    return ("sh" if digits.startswith(("000", "999")) else "sz") + digits
+
+
+def fetch_index_daily_tencent(symbol: str = "", code: str = "", days: int = 20,
+                              **kwargs) -> list[dict]:
+    """指数历史日K量能序列（腾讯 proxy.finance.qq.com，**单次请求**）。
+
+    为什么不用 akshare 的 `stock_zh_index_daily_tx`：它按**年份逐年翻页**
+    （上证指数从 1990 年起 → 37 次请求 ≈ 21 秒），在 SmartRouter 的 12s
+    超时下必然失败，于是该备源被误判为不可用。而我们只需最近若干交易日，
+    **当年一次请求即可**（实测 0.12s，快约 150 倍）。
+
+    返回 [{"date","volume","amount"}, ...]：
+      - volume 取原始数组第 6 位（成交量，手）
+      - **amount 恒为 None** —— 腾讯该接口的成交额字段单位未能可靠确认，
+        宁可为空也不给出可能错标的数据（本项目有过列错位的教训）
+    兼容 symbol/code 两种参数名。
+    """
+    sym = _to_tencent_index_sym(symbol or code)
+    if not sym or len(sym) < 8:
+        raise RuntimeError("index symbol required (e.g. sh000001)")
+
+    # 请求当年 + 上一年：跨年时也能凑够 days 条（接口按 end 回推 640 根，通常一次足够）
+    from datetime import datetime as _dt
+
+    year = _dt.now().year
+    resp = None
+    for y in (year, year - 1):
+        raw = get_bytes(
+            _ensure_tencent_session,
+            _tencent_throttle,
+            _TENCENT_KLINE_URL,
+            params={"param": f"{sym},day,{y}-01-01,{y + 1}-12-31,640,qfq"},
+            timeout=10,
+            max_retries=TENCENT_MAX_RETRY,
+        )
+        if raw is None:
+            continue
+        try:
+            payload = json.loads(raw.decode("utf-8", errors="replace"))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("tencent index kline(%s) json failed: %s", sym, exc)
+            continue
+        node = ((payload.get("data") or {}).get(sym) or {})
+        bars = node.get("day") or node.get("qfqday") or []
+        if bars:
+            resp = bars
+            break
+
+    if not resp:
+        raise RuntimeError(f"tencent index daily empty for {sym}")
+
+    out = []
+    for row in resp[-max(int(days), 1):]:
+        try:
+            out.append({
+                "date": str(row[0]),
+                "volume": float(row[5]) if row[5] not in (None, "") else 0.0,
+                "amount": None,
+            })
+        except (IndexError, TypeError, ValueError):
+            continue
+    if not out:
+        raise RuntimeError(f"tencent index daily parse failed for {sym}")
+    return out
 
 
 def fetch_realtime_quote_tencent(symbol: str = "", code: str = "", **kwargs):
@@ -407,6 +561,8 @@ def fetch_market_breadth(**kwargs) -> pd.DataFrame:
     url = "https://push2ex.eastmoney.com/getTopicZDFenBu"
     params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztzt"}
     resp = em_get(url, params=params, timeout=15)
+    if resp is None:
+        raise RuntimeError("fetch_market_breadth: 东财请求重试耗尽")
     resp.raise_for_status()
     fenbu = resp.json()["data"]["fenbu"]
     up = down = flat = limit_up = limit_down = 0
@@ -445,6 +601,8 @@ def fetch_industry_quotes(**kwargs) -> pd.DataFrame:
     for host in ("https://push2.eastmoney.com", "https://push2delay.eastmoney.com"):
         try:
             resp = em_get(f"{host}/api/qt/clist/get", params=params, timeout=15)
+            if resp is None:
+                raise RuntimeError(f"{host} 请求重试耗尽")
             resp.raise_for_status()
             diff = resp.json().get("data", {}).get("diff", [])
             rows = []

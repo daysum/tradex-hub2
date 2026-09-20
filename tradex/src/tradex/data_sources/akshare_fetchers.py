@@ -14,7 +14,9 @@ AKShare 数据源 fetch_fn 包装器。
 from __future__ import annotations
 
 import calendar
+import json
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -117,20 +119,211 @@ def fetch_historical_kline(
     adjust: str = "qfq",
     **kwargs,
 ):
-    """历史 K 线（东方财富 stock_zh_a_hist）。返回中文列名 DataFrame。
+    """历史 K 线（中文列名 DataFrame）。
 
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
     v3.3.14: period 先做归一化(day/week/month → daily/weekly/monthly)，
     使本备源与 eltdx 主源的周期语义对齐，避免路由原样透传时降级链断裂。
+
+    v3.3.27：由 akshare 改为**本项目直连**，两层：
+      1. 东财 push2his kline（走 `em_get`，享节流/重试/镜像/熔断）——
+         与 akshare 同源同字段，复权与振幅/涨跌幅由上游原生给出
+      2. **腾讯 `proxy.finance.qq.com`**（实测可用）—— 东财日K路由故障时的兜底
+         （实测 2026-09-20 `push2his` 连接被拒、`push2delay` 该路径返回空 klines，
+         即东财日K整体不可用；而腾讯可用）
+
+    为什么不再用 akshare：它用裸 requests 打 `push2his`，被拒连；且**即便打通**，
+    下面的字段映射问题也说明不该继续依赖它的输出（见 `_fetch_historical_kline_direct`）。
+
+    返回列（与 akshare `stock_zh_a_hist` 完全一致）：
+        日期 / 股票代码 / 开盘 / 收盘 / 最高 / 最低 / 成交量 / 成交额 / 振幅 / 涨跌幅 / 涨跌额 / 换手率
     """
-    ak = _ak()
     sym = symbol or code
-    em_kwargs: dict = {"symbol": sym, "period": _normalize_ak_period(period), "adjust": adjust}
-    if start_date:
-        em_kwargs["start_date"] = start_date
-    if end_date:
-        em_kwargs["end_date"] = end_date
-    return ak.stock_zh_a_hist(**em_kwargs)
+    if not sym:
+        raise RuntimeError("historical_kline: symbol/code is required")
+    return _fetch_historical_kline_direct(
+        sym, period=_normalize_ak_period(period),
+        start_date=start_date, end_date=end_date, adjust=adjust,
+    )
+
+
+# 东财 push2his kline 的 klt / fqt 映射（与 akshare stock_zh_a_hist 一致）
+_EM_KLT = {"daily": "101", "weekly": "102", "monthly": "103"}
+_EM_FQT = {"qfq": "1", "hfq": "2", "": "0"}
+_EM_KLINE_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
+# f51..f61 的语义（东财 kline 返回的是逗号串，顺序由 fields2 决定）
+#   f51=日期 f52=开 f53=收 f54=高 f55=低 f56=成交量(手) f57=成交额(元)
+#   f58=振幅% f59=涨跌幅% f60=涨跌额 f61=换手率%
+_EM_KLINE_FIELDS2 = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f116"
+# 与 akshare 完全一致的输出列顺序
+_KLINE_COLUMNS = [
+    "日期", "股票代码", "开盘", "收盘", "最高", "最低",
+    "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率",
+]
+# 东财 kline 逗号串的 11 个字段对应的列名（**不含** 股票代码 ——
+# 它由请求参数补出，不在响应里；别用 _KLINE_COLUMNS[:11] 代替，会错位）
+_EM_KLINE_FIELD_COLUMNS = [
+    "日期", "开盘", "收盘", "最高", "最低",
+    "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率",
+]
+
+
+def _norm_date_ymd(s: str) -> str:
+    """把 YYYYMMDD / YYYY-MM-DD 统一成 YYYY-MM-DD；空串原样返回。"""
+    d = str(s or "").strip().replace("-", "")
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 and d.isdigit() else ""
+
+
+def _to_tencent_sym(symbol: str) -> str:
+    """归一化成腾讯要的 sh600519 / sz000001 形式。"""
+    s = str(symbol or "").strip().lower()
+    if s[:2] in ("sh", "sz", "bj"):
+        return s
+    digits = s.split(".")[-1].zfill(6) if "." in s else s.zfill(6)
+    if digits.startswith(("6", "9")):
+        return "sh" + digits
+    if digits.startswith(("4", "8")):
+        return "bj" + digits
+    return "sz" + digits
+
+
+def _fetch_kline_from_em(sym: str, period: str, start_date: str,
+                         end_date: str, adjust: str) -> pd.DataFrame:
+    """东财 push2his kline（经统一防封层）。失败抛异常由上层兜底。"""
+    from .em_client import em_get
+
+    code6 = _code6(sym)
+    if not code6:
+        raise RuntimeError("historical_kline: symbol/code is required")
+    params = {
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": _EM_KLINE_FIELDS2,
+        "ut": "7eea3edcaed734bea9cbfc24409ed989",
+        "klt": _EM_KLT.get(period, "101"),
+        "fqt": _EM_FQT.get(adjust, "0"),
+        "secid": f"{1 if code6.startswith('6') else 0}.{code6}",
+        "beg": str(start_date or "0").replace("-", ""),
+        "end": str(end_date or "20500101").replace("-", ""),
+    }
+    resp = em_get(_EM_KLINE_URL, params=params, timeout=15)
+    if resp is None:
+        raise RuntimeError(f"historical_kline({code6}): 东财 kline 请求重试耗尽")
+    resp.raise_for_status()
+    klines = ((resp.json() or {}).get("data") or {}).get("klines") or []
+    if not klines:
+        raise RuntimeError(f"historical_kline({code6}): 东财 kline 返回空")
+
+    rows = [str(item).split(",") for item in klines]
+    # 只保留字段齐全的行（f51..f61 共 11 个）
+    rows = [r for r in rows if len(r) >= 11]
+    if not rows:
+        raise RuntimeError(f"historical_kline({code6}): 东财 kline 字段不完整")
+    df = pd.DataFrame([r[:11] for r in rows], columns=_EM_KLINE_FIELD_COLUMNS)
+    df["股票代码"] = code6
+    df = df[_KLINE_COLUMNS]
+    df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
+    for col in _KLINE_COLUMNS[2:]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+def _fetch_kline_from_tencent(sym: str, period: str, start_date: str,
+                              end_date: str, adjust: str) -> pd.DataFrame:
+    """腾讯 proxy.finance.qq.com 日/周/月 K（实测可用，走加固传输层）。
+
+    字段布局（已用 eltdx 主源逐字段交叉验证，2026-09-18 600519）：
+        [0]日期 [1]开 [2]收 [3]高 [4]低 [5]成交量(手) [6]{} [7]换手率% [8]成交额(**万元**)
+    腾讯**不提供**振幅/涨跌幅/涨跌额，按前一根收盘价自行计算。
+    """
+    from .http_fetchers import _ensure_tencent_session, _tencent_throttle
+    from astock_signals.antiban_http import get_bytes, TENCENT_MAX_RETRY
+
+    per = {"daily": "day", "weekly": "week", "monthly": "month"}.get(period, "day")
+    adj = {"qfq": "qfq", "hfq": "hfq"}.get(adjust, "")
+    tsym = _to_tencent_sym(sym)
+    beg = _norm_date_ymd(start_date) or "1990-01-01"
+    end = _norm_date_ymd(end_date) or "2050-01-01"
+
+    raw = get_bytes(
+        _ensure_tencent_session,
+        _tencent_throttle,
+        "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get",
+        params={"param": f"{tsym},{per},{beg},{end},640,{adj}"},
+        timeout=15,
+        max_retries=TENCENT_MAX_RETRY,
+    )
+    if raw is None:
+        raise RuntimeError(f"historical_kline({sym}): 腾讯 kline 请求重试耗尽")
+    payload = json.loads(raw.decode("utf-8", errors="replace"))
+    node = ((payload.get("data") or {}).get(tsym)) or {}
+    bars = node.get(f"{adj}{per}") or node.get(per) or []
+    if not bars:
+        raise RuntimeError(f"historical_kline({sym}): 腾讯 kline 返回空")
+
+    recs = []
+    for b in bars:
+        if len(b) < 9:
+            continue
+        try:
+            recs.append({
+                "日期": str(b[0]),
+                "开盘": float(b[1]),
+                "收盘": float(b[2]),
+                "最高": float(b[3]),
+                "最低": float(b[4]),
+                "成交量": float(b[5]) if b[5] not in (None, "") else None,
+                "换手率": float(b[7]) if b[7] not in (None, "") else None,
+                # 腾讯给的是**万元**，统一换算成元（与东财/eltdx 口径一致）
+                "成交额": float(b[8]) * 10000 if b[8] not in (None, "") else None,
+            })
+        except (TypeError, ValueError):
+            continue
+    if not recs:
+        raise RuntimeError(f"historical_kline({sym}): 腾讯 kline 解析为空")
+
+    df = pd.DataFrame(recs).sort_values("日期").reset_index(drop=True)
+    prev_close = df["收盘"].shift(1)
+    # 振幅/涨跌幅/涨跌额：腾讯不提供，按前收计算（首行无前收 → NaN）
+    df["涨跌额"] = df["收盘"] - prev_close
+    df["涨跌幅"] = df["涨跌额"] / prev_close * 100
+    df["振幅"] = (df["最高"] - df["最低"]) / prev_close * 100
+    df["股票代码"] = _code6(sym)
+
+    if beg != "1990-01-01":
+        df = df[df["日期"] >= beg]
+    if end != "2050-01-01":
+        df = df[df["日期"] <= end]
+    if df.empty:
+        raise RuntimeError(f"historical_kline({sym}): 腾讯 kline 在指定区间内为空")
+
+    df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
+    return df[_KLINE_COLUMNS].reset_index(drop=True)
+
+
+def _fetch_historical_kline_direct(sym: str, period: str = "daily",
+                                   start_date: str = "", end_date: str = "",
+                                   adjust: str = "qfq") -> pd.DataFrame:
+    """历史 K 线直连：东财（原生复权/振幅）→ 腾讯（兜底）。
+
+    ⚠️ 关于「不要退回 akshare」的说明（v3.3.27）：
+    akshare 的 `stock_zh_a_hist` 有**两个**问题 ——
+      ① 传输：裸 requests 打 `push2his`，被拒连（本函数第 1 层已用统一入口解决）
+      ② **字段映射用的是「按位置赋列名」**（`temp_df.columns = [...]`），
+         而东财 kline 返回的是逗号串，顺序**取决于 `fields2` 参数的顺序**。
+         一旦上游调整字段顺序或某个字段缺失，列名会整体错位 ——
+         正是本项目 v3.3.16 fund_hold 的同类事故。
+    本实现同样按位置切分（逗号串没有 key 可依），但**显式校验字段个数**
+    （不足 11 个的行直接丢弃），避免「少一列 → 整体错位」的静默污染。
+    """
+    errors = []
+    for name, fn in (("东财 push2his", _fetch_kline_from_em),
+                     ("腾讯", _fetch_kline_from_tencent)):
+        try:
+            return fn(sym, period, start_date, end_date, adjust)
+        except Exception as exc:  # noqa: BLE001 - 逐层降级
+            errors.append(f"{name}({exc})")
+            logger.debug("historical_kline %s 失败: %s", name, exc)
+    raise RuntimeError(f"historical_kline({sym}) 全部源失败: {'; '.join(errors)}")
 
 
 # ============================================================
@@ -140,13 +333,19 @@ def fetch_historical_kline(
 def fetch_index_daily_amount(symbol: str = "", code: str = "", days: int = 6, **kwargs):
     """指数历史日K 量能序列（供盘后复盘「量能对比」柱状图）。
 
-    主源：东方财富 push2his（历史K线域名，直连，curl_cffi 绕过系统代理）。
+    主源：东方财富 push2his（历史K线域名，直连，含 成交量+成交额）。
       返回字段 f51-f61 = [日期, 开, 收, 高, 低, 成交量(手), 成交额(元), 振幅, 涨跌幅, 涨跌额, 换手率]，
       其中 成交额 在第7位（index 6）。
-    备源1：腾讯财经 stock_zh_index_daily_tx（直连可达，仅 成交量(手)，无成交额）。
+    备源1：腾讯 proxy.finance.qq.com（**本项目直连，单次请求**，仅 成交量(手)，无成交额）。
     备源2：东方财富 stock_zh_index_daily_em（含 成交量+成交额；当前网络拓扑下 push2 直连常 RemoteDisconnected）。
     返回最近 days 个交易日的 [日期, 成交量(手), 成交额(元)]。
     兼容 symbol/code 两种参数名（symbol 用 sh000001 / sz399001 / sz399006 等格式）。
+
+    v3.3.22 变更：备源1 由 akshare 的 `stock_zh_index_daily_tx` 改为本项目直连
+    `http_fetchers.fetch_index_daily_tencent`。前者**按年份逐年翻页**（上证指数从
+    1990 年起 → 37 次请求 ≈ 21 秒），在 SmartRouter 的 12s 超时下必然失败，
+    导致该备源被误判为不可用（实测 2026-09-20 push2his 日K路由全挂时，
+    本函数三层降级全失败）。直连版**单次请求 0.12s**，快约 150 倍。
     """
     ak = _ak()
     sym = symbol or code
@@ -159,12 +358,13 @@ def fetch_index_daily_amount(symbol: str = "", code: str = "", days: int = 6, **
     except Exception as e_push2his:
         logger.debug("push2his index daily(%s) failed: %s", sym, e_push2his)
 
-    # 备源1：腾讯财经（amount 列实为成交量(手)，无成交额）
+    # 备源1：腾讯（本项目直连，单次请求；amount 列为成交量(手)，无成交额）
     try:
-        df = ak.stock_zh_index_daily_tx(symbol=sym)
-        src = "tx"
+        from .http_fetchers import fetch_index_daily_tencent
+
+        return fetch_index_daily_tencent(sym, days=days)
     except Exception as e_tx:
-        logger.debug("stock_zh_index_daily_tx(%s) failed: %s", sym, e_tx)
+        logger.debug("fetch_index_daily_tencent(%s) failed: %s", sym, e_tx)
         # 备源2：东方财富（含 成交量 + 成交额）
         try:
             df = ak.stock_zh_index_daily_em(symbol=sym)
@@ -212,8 +412,14 @@ def _fetch_index_daily_from_push2his(sym: str, days: int) -> list:
     """直连东财 push2his 历史K线接口取指数量能序列（含成交额）。
 
     返回 [{"date","volume","amount"}, ...]；成交额/成交量为 None 时表示该源未提供。
+
+    v3.3.19：原实现自建 curl_cffi 会话（硬编码 UA/Referer，无限流无重试），
+    现统一走 em_get —— 复用全局东财节流器，避免与本项目其他东财调用叠加超额。
+
+    注：em_get 采用**函数内导入**（项目既有约定），使测试可 monkeypatch
+    `em_client.em_get` 注入假响应而不触网。
     """
-    from curl_cffi import requests as _rq
+    from .em_client import em_get
 
     # symbol 格式 sh000001 / sz399001 / sz399006 → secid
     if sym.lower().startswith("sh") or sym.lower().startswith("1."):
@@ -224,14 +430,6 @@ def _fetch_index_daily_from_push2his(sym: str, days: int) -> list:
         # 纯数字：上证≈1.，深证≈0.
         secid = f"1.{sym.zfill(6)}" if sym.startswith(("000001", "999999")) else f"0.{sym.zfill(6)}"
 
-    _session = _rq.Session()
-    _session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Referer": "https://quote.eastmoney.com/",
-    })
     url = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
     params = {
         "secid": secid,
@@ -244,7 +442,10 @@ def _fetch_index_daily_from_push2his(sym: str, days: int) -> list:
         "lmt": max(int(days), 10),
     }
 
-    resp = _session.get(url, params=params, timeout=10)
+    resp = em_get(url, params=params, headers={"Referer": "https://quote.eastmoney.com/"},
+                  timeout=10)
+    if resp is None:
+        raise RuntimeError(f"push2his request failed for {sym}")
     resp.raise_for_status()
     data = resp.json()
     klines = (data.get("data") or {}).get("klines") or []
@@ -270,16 +471,100 @@ def _fetch_index_daily_from_push2his(sym: str, days: int) -> list:
 # ============================================================
 
 def fetch_minute_data(symbol: str = "", code: str = "", **kwargs):
-    """当日分时数据（东方财富 stock_intraday_em）。返回原始 DataFrame。
+    """当日分时数据（东方财富分时明细）。返回原始 DataFrame。
 
     工具层负责列名标准化与格式化。
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
+
+    v3.3.25：由 akshare 改为**本项目直连**。akshare 的 `stock_intraday_em` 用裸
+    requests 打 `70.push2.eastmoney.com`（带数字前缀的子域，**无镜像可切**）
+    的 `/details/sse`，该主机故障时直接失败；改用 `push2.eastmoney.com`
+    （有 push2delay 镜像）的 **`/details/get` 非流式变体**（见 `_fetch_minute_data_direct`）。
+
+    返回列：时间 / 成交价 / 手数 / 买卖盘性质（与 akshare 版本一致）。
     """
-    ak = _ak()
     sym = symbol or code
-    df = ak.stock_intraday_em(symbol=sym)
-    if df is None or df.empty:
-        raise RuntimeError("akshare intraday empty")
+    if not sym:
+        raise RuntimeError("minute_data: symbol/code is required")
+    return _fetch_minute_data_direct(sym)
+
+
+def _fetch_minute_data_direct(symbol: str) -> pd.DataFrame:
+    """直连东财分时明细（走统一防封层 + 主机镜像）。
+
+    为什么用 `push2.eastmoney.com` 而不是 akshare 的 `70.push2.eastmoney.com`：
+    只有前者配了镜像，节点故障时能自动切 `push2delay`（实测 70.push2 无镜像可切）。
+
+    ⚠️ 为什么用 `/api/qt/stock/details/get` 而不是 akshare 用的 `/details/sse`：
+    `/sse` 是 **SSE 长连接**，服务端把整包塞在首个事件后**不主动关闭**，于是
+      - 非流式 GET 会阻塞到超时（实测 10s 必超时）
+      - 即便 `stream=True` 读到首个事件就 break，`resp.close()` 仍会去
+        **排空剩余响应体**（curl 为复用连接），实测 **close() 独占 8.6s**
+    而 `/details/get` 是**同一份数据的非流式变体**（实测 200 / 0.28s，载荷一致）。
+    结论：**别用 SSE 变体**，用 `/get` + `em_get` 即可，快 30 倍且代码简单得多。
+
+    Raises:
+        RuntimeError: 请求重试耗尽、返回空、或解析不出明细。
+    """
+    # 函数级导入（项目约定：便于测试 monkeypatch em_client.em_get）
+    from .em_client import em_get
+
+    raw = str(symbol or "").strip().lower()
+    code6 = _code6(raw)
+    if not code6:
+        raise RuntimeError("minute_data: symbol/code is required")
+    # 显式前缀优先（如 sh000001 是上证指数，市场码必须为 1；
+    # 只按首位数字猜会把指数判成深市 0，得到空明细）
+    if raw.startswith("sh"):
+        market_code = 1
+    elif raw.startswith(("sz", "bj")):
+        market_code = 0
+    else:
+        market_code = 1 if code6.startswith("6") else 0
+
+    params = {
+        "fields1": "f1,f2,f3,f4",
+        "fields2": "f51,f52,f53,f54,f55",
+        "mpi": "2000",
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fltt": "2",
+        "pos": "-0",
+        "secid": f"{market_code}.{code6}",
+        "wbp2u": "|0|0|0|web",
+    }
+    resp = em_get(
+        "https://push2.eastmoney.com/api/qt/stock/details/get",
+        params=params,
+        headers={"Referer": "https://quote.eastmoney.com/"},
+        timeout=15,
+    )
+    if resp is None:
+        raise RuntimeError(f"minute_data({code6}): 分时请求重试耗尽")
+    resp.raise_for_status()
+
+    payload = resp.json() or {}
+    details = ((payload.get("data") or {}).get("details")) or []
+    if not details:
+        raise RuntimeError(f"minute_data({code6}): 分时明细为空")
+
+    # details 每项形如 "09:15:06,1266.98,4,0,4"
+    #   -> [时间, 成交价, 手数, -, 买卖盘性质]（与 akshare 的列语义一致）
+    rows = []
+    for item in details:
+        parts = str(item).split(",")
+        if len(parts) < 5:
+            continue
+        rows.append({
+            "时间": parts[0],
+            "成交价": pd.to_numeric(parts[1], errors="coerce"),
+            "手数": pd.to_numeric(parts[2], errors="coerce"),
+            "买卖盘性质": parts[4],
+        })
+    if not rows:
+        raise RuntimeError(f"minute_data({code6}): 分时明细解析为空")
+
+    df = pd.DataFrame(rows, columns=["时间", "成交价", "手数", "买卖盘性质"])
+    df["买卖盘性质"] = df["买卖盘性质"].map({"2": "买盘", "1": "卖盘", "4": "中性盘"})
     return df
 
 
@@ -385,6 +670,295 @@ def fetch_valuation(
 # industry_data — 行业与板块（多 endpoint）
 # ============================================================
 
+# ---------------------------------------------------------------------------
+# 行业板块成分股（board_industry_cons_em 直连版，v3.3.28）
+#
+# 背景：该 endpoint 此前**两个源都不覆盖** —— 主源 akshare 用裸 requests 打
+# `29.push2.eastmoney.com/api/qt/clist/get` 被拒连；备源 ths 明确不支持。
+# 导致 get_industry_stocks / get_competitors 两个工具恒失败。
+#
+# 实测 2026-09-20：`29.push2` ❌ / `push2.eastmoney.com` ❌ /
+# **`push2delay.eastmoney.com` ✅ 200**，且经 `em_get` 可取到（走镜像）。
+#
+# ⚠️ 字段映射：akshare 用「按位置赋列名」，依赖**响应 key 的精确顺序** +
+# `fetch_paginated_data` 里 `reset_index()` 插入的那一列（32 字段 + index = 33 列）。
+# 这里改为**按字段名映射**，上游改序也不会错位。
+# ---------------------------------------------------------------------------
+_EM_BOARD_CONS_URL = "https://push2.eastmoney.com/api/qt/clist/get"
+_EM_BOARD_CONS_UT = "bd1d9ddb04089700cf9c27f6f7426281"
+_EM_BOARD_CONS_FIELDS = (
+    "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,"
+    "f23,f24,f25,f22,f11,f62,f128,f136,f115,f152,f45"
+)
+_EM_BOARD_CONS_PAGE_SIZE = 100
+_EM_BOARD_CONS_MAX_PAGES = 20      # 安全上限（约 2000 只，单行业不会超）
+
+# 板块分类：行业板块 / 概念板块（**两类都要检索**，名字可能只在其中一类）
+_BOARD_TAXONOMIES: tuple[tuple[str, str], ...] = (
+    ("m:90+t:2", "行业板块"),
+    ("m:90+t:3", "概念板块"),
+)
+# 板块「名称 → BK 代码」映射的进程内缓存（**支持断点续取**，见 _board_map_lookup）
+# fs -> {"ts": 上次更新时间, "map": 名称→代码, "pages": 已取页数, "complete": 是否翻完}
+_BOARD_MAP_CACHE: dict[str, dict] = {}
+_BOARD_MAP_TTL = 3600.0
+_BOARD_MAP_MAX_PAGES = 12          # 496 行业 / 504 概念，按 100/页 约 5~6 页
+
+# 输出列 ← 响应字段（与 akshare stock_board_industry_cons_em 的 16 列一致）
+_BOARD_CONS_COLUMNS = [
+    "序号", "代码", "名称", "最新价", "涨跌幅", "涨跌额", "成交量", "成交额",
+    "振幅", "最高", "最低", "今开", "昨收", "换手率", "市盈率-动态", "市净率",
+]
+_BOARD_CONS_FIELD_MAP = {
+    "代码": "f12", "名称": "f14",
+    "最新价": "f2", "涨跌幅": "f3", "涨跌额": "f4",
+    "成交量": "f5", "成交额": "f6", "振幅": "f7",
+    "最高": "f15", "最低": "f16", "今开": "f17", "昨收": "f18",
+    "换手率": "f8", "市盈率-动态": "f9", "市净率": "f23",
+}
+_NUMERIC_CONS_COLUMNS = [c for c in _BOARD_CONS_COLUMNS if c not in ("序号", "代码", "名称")]
+
+
+def _resolve_em_board_code(symbol: str) -> str:
+    """把「板块名称」解析成东财板块代码（BKxxxx）。
+
+    已是 BK 代码则原样返回。
+
+    ⚠️ **必须同时检索「行业板块」与「概念板块」**：
+    实测 2026-09-20 —— `白酒` / `新能源车` 只存在于**概念板块**
+    （BK0896 等），而 `银行` / `半导体` 在**行业板块**（BK1283 / BK1036）。
+    本函数的调用方 `get_industry_stocks` 的 docstring 明确把
+    「白酒 / 新能源车」列为合法输入，所以只搜行业板块会**直接找不到**
+    —— akshare 原版就有这个毛病（即便它的传输正常也会失败）。
+    """
+    s = str(symbol or "").strip()
+    if s.upper().startswith("BK") and s[2:].isdigit():
+        return s.upper()
+    if not s:
+        raise RuntimeError("board_industry_cons_em: 板块名称/代码不能为空")
+
+    tried: list[str] = []
+    for fs, kind in _BOARD_TAXONOMIES:
+        code = _board_map_lookup(fs, s)
+        if code:
+            return code
+        st = _BOARD_MAP_CACHE.get(fs) or {}
+        tried.append(f"{kind} {len(st.get('map') or {})} 个")
+    raise RuntimeError(
+        f"board_industry_cons_em: 未找到板块 {s!r}（已检索 {' / '.join(tried)}）"
+    )
+
+
+def _board_map_lookup(fs: str, name: str) -> str | None:
+    """在某一类板块里查名称对应的 BK 代码；必要时继续翻页。
+
+    ⚠️ 服务端把 `pz` **硬顶在 100**（实测传 600/1000 仍只返回 100），
+    而行业板块 496 个、概念板块 504 个 —— **必须翻页**，否则只能看到前 100 个，
+    「白酒」这类靠后的名字会被误判为不存在。
+
+    翻页结果按 `fs` 缓存（**支持断点续取**）：本次没翻完就记下已取页数，
+    下次接着翻；翻完则标记 complete，后续同分类查询零请求命中。
+    板块名单变动很慢，TTL 默认 1 小时。
+    """
+    st = _BOARD_MAP_CACHE.setdefault(
+        fs, {"ts": 0.0, "map": {}, "pages": 0, "complete": False})
+    if time.time() - st["ts"] > _BOARD_MAP_TTL:
+        st.update({"ts": 0.0, "map": {}, "pages": 0, "complete": False})
+
+    if name in st["map"]:
+        return st["map"][name]
+    if st["complete"]:
+        return None
+
+    from .em_client import em_get
+
+    page = int(st["pages"]) + 1
+    while page <= _BOARD_MAP_MAX_PAGES:
+        resp = em_get(_EM_BOARD_CONS_URL, params={
+            "pn": str(page), "pz": "100", "po": "1", "np": "1",
+            "ut": _EM_BOARD_CONS_UT, "fltt": "2", "invt": "2",
+            "fs": fs, "fields": "f12,f14",
+        }, timeout=15)
+        if resp is None:
+            raise RuntimeError(f"board_industry_cons_em: 板块列表({fs}) 请求重试耗尽")
+        resp.raise_for_status()
+        data = (resp.json() or {}).get("data") or {}
+        diff = data.get("diff") or []
+        st["pages"] = page
+        if not diff:
+            st["complete"] = True
+            break
+        for item in diff:
+            nm = str(item.get("f14", "")).strip()
+            if nm:
+                st["map"][nm] = str(item.get("f12", ""))
+        if name in st["map"]:
+            break
+        if len(st["map"]) >= int(data.get("total") or 0):
+            st["complete"] = True
+            break
+        page += 1
+
+    st["ts"] = time.time()
+    return st["map"].get(name)
+
+
+def _fetch_board_industry_cons_direct(symbol: str) -> pd.DataFrame:
+    """直连东财行业板块成分股（走统一防封层 + 主机镜像）。
+
+    Returns:
+        DataFrame，16 列，与 akshare `stock_board_industry_cons_em` 一致：
+        序号 / 代码 / 名称 / 最新价 / 涨跌幅 / 涨跌额 / 成交量 / 成交额 /
+        振幅 / 最高 / 最低 / 今开 / 昨收 / 换手率 / 市盈率-动态 / 市净率
+        （按涨跌幅降序，序号 1..N）
+
+    Raises:
+        RuntimeError: 板块解析失败、请求重试耗尽、或返回空。
+    """
+    from .em_client import em_get
+
+    board_code = _resolve_em_board_code(symbol)
+
+    rows: list[dict] = []
+    for page in range(1, _EM_BOARD_CONS_MAX_PAGES + 1):
+        resp = em_get(_EM_BOARD_CONS_URL, params={
+            "pn": str(page), "pz": str(_EM_BOARD_CONS_PAGE_SIZE), "po": "1", "np": "1",
+            "ut": _EM_BOARD_CONS_UT, "fltt": "2", "invt": "2",
+            "fid": "f3", "fs": f"b:{board_code} f:!50",
+            "fields": _EM_BOARD_CONS_FIELDS,
+        }, headers={"Referer": "https://data.eastmoney.com/"}, timeout=15)
+        if resp is None:
+            raise RuntimeError(f"board_industry_cons_em({board_code}): 请求重试耗尽")
+        resp.raise_for_status()
+        data = (resp.json() or {}).get("data") or {}
+        diff = data.get("diff") or []
+        if not diff:
+            break
+        rows.extend(diff)
+        total = int(data.get("total") or 0)
+        if len(rows) >= total:
+            break
+
+    if not rows:
+        raise RuntimeError(f"board_industry_cons_em({board_code}): 返回空成分股")
+
+    # 按字段名取（不按位置）——上游改 key 顺序也不会错位
+    recs = []
+    for item in rows:
+        rec = {"代码": item.get("f12"), "名称": item.get("f14")}
+        for col, fld in _BOARD_CONS_FIELD_MAP.items():
+            if col in ("代码", "名称"):
+                continue
+            rec[col] = pd.to_numeric(item.get(fld), errors="coerce")
+        recs.append(rec)
+
+    df = pd.DataFrame(recs)
+    # akshare 按涨跌幅降序，序号 1..N
+    df = df.sort_values("涨跌幅", ascending=False, ignore_index=True)
+    df.insert(0, "序号", range(1, len(df) + 1))
+    return df[_BOARD_CONS_COLUMNS]
+
+
+# ---------------------------------------------------------------------------
+# 行业板块历史行情（board_industry_hist_em 直连版，v3.3.29）
+#
+# 背景：该 endpoint 此前**两个源都不覆盖** —— 主源 akshare 打
+# `7.push2his.eastmoney.com/api/qt/stock/kline/get`（`secid=90.BKxxxx`），
+# 而东财板块日K路由**整条链路故障**（实测所有 push2his* 主机连接被拒；
+# `push2delay` 虽认得出板块但 `klines` 为空）；备源 ths 明确不支持。
+#
+# 实测**同花顺的板块K线免鉴权可用** → 作为兜底来源
+# （实现放在 `ths_fetchers.fetch_ths_board_hist`，10jqka 域名的传输归它管）。
+# ---------------------------------------------------------------------------
+_EM_BOARD_HIST_KLT = {
+    "日k": "101", "周k": "102", "月k": "103",
+    "daily": "101", "weekly": "102", "monthly": "103",
+}
+# 与 akshare stock_board_industry_hist_em 一致的最终列顺序
+_BOARD_HIST_COLUMNS = [
+    "日期", "开盘", "收盘", "最高", "最低", "涨跌幅", "涨跌额",
+    "成交量", "成交额", "振幅", "换手率",
+]
+
+
+def _fetch_board_hist_from_em(symbol: str, period: str,
+                              start_date: str, end_date: str) -> pd.DataFrame:
+    """东财板块日K（经统一防封层）。板块故障时抛异常由上层兜底。"""
+    from .em_client import em_get
+
+    bk = _resolve_em_board_code(symbol)
+    beg = str(start_date or "").strip().replace("-", "") or "0"
+    end = str(end_date or "").strip().replace("-", "") or "20500101"
+    resp = em_get(_EM_KLINE_URL, params={
+        "fields1": "f1,f2,f3,f4,f5,f6",
+        "fields2": _EM_KLINE_FIELDS2,
+        "ut": "7eea3edcaed734bea9cbfc24409ed989",
+        "klt": _EM_BOARD_HIST_KLT.get(str(period or "日k").strip().lower(), "101"),
+        "fqt": "1",
+        "secid": f"90.{bk}",
+        "beg": beg,
+        "end": end,
+    }, timeout=15)
+    if resp is None:
+        raise RuntimeError(f"board_industry_hist_em({bk}): 东财请求重试耗尽")
+    resp.raise_for_status()
+    klines = ((resp.json() or {}).get("data") or {}).get("klines") or []
+    if not klines:
+        raise RuntimeError(f"board_industry_hist_em({bk}): 东财 kline 返回空")
+
+    rows = [str(it).split(",") for it in klines]
+    rows = [r for r in rows if len(r) >= 11]
+    if not rows:
+        raise RuntimeError(f"board_industry_hist_em({bk}): 东财 kline 字段不完整")
+    df = pd.DataFrame([r[:11] for r in rows], columns=_EM_KLINE_FIELD_COLUMNS)
+    df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
+    for col in _EM_KLINE_FIELD_COLUMNS[1:]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df[_BOARD_HIST_COLUMNS]
+
+
+def _fetch_board_industry_hist_direct(symbol: str, period: str = "日k",
+                                      start_date: str = "", end_date: str = "") -> pd.DataFrame:
+    """板块历史行情：**同花顺优先** → 东财兜底。
+
+    ⚠️ 为什么同花顺优先（而非东财优先）：
+    东财的板块日K路由**整条链路故障**（所有 `push2his*` 主机连接被拒，
+    `push2delay` 认得出板块但 `klines` 为空）。若把东财放前面，每次冷启动
+    都要先做一遍昂贵的「板块名 → BK 代码」解析（翻 496 行业 + 504 概念）
+    再失败 —— 实测首调用因此要 **24s**，超过路由默认超时。
+    同花顺则 0.3s 就返回（且免鉴权、实测稳定）。
+    东财层保留为兜底：待其板块日K恢复后，把顺序换回来即可拿回**换手率**列
+    （同花顺板块K线不提供换手率）。
+
+    ⚠️ 关于「不要退回 akshare」：akshare 的 `stock_board_industry_hist_em` 打
+    `7.push2his`（正是故障链路），且与 `board_industry_cons_em` 同属
+    「按位置赋列名」的写法。本实现东财层按**字段名**取值，
+    同花顺层按同花顺的固定字段顺序（日期,开,高,低,收,量,额）解析。
+    """
+    errors = []
+    for name, fn in (
+        ("同花顺", _fetch_board_hist_from_ths),
+        ("东财", _fetch_board_hist_from_em),
+    ):
+        try:
+            return fn(symbol, period, start_date, end_date)
+        except Exception as exc:  # noqa: BLE001 - 逐层降级
+            errors.append(f"{name}({exc})")
+            logger.debug("board_industry_hist_em %s 失败: %s", name, exc)
+    raise RuntimeError(
+        f"board_industry_hist_em({symbol}) 全部源失败: {'; '.join(errors)}")
+
+
+def _fetch_board_hist_from_ths(symbol: str, period: str,
+                               start_date: str, end_date: str) -> pd.DataFrame:
+    """同花顺板块历史行情（委托给 ths_fetchers —— 10jqka 传输归它管）。"""
+    from .ths_fetchers import fetch_ths_board_hist
+
+    return fetch_ths_board_hist(symbol=symbol, period=period,
+                                start_date=start_date, end_date=end_date,
+                                kind="industry")
+
+
 def fetch_industry_data(
     endpoint: str = "board_industry_name_em",
     industry: str = "",
@@ -412,22 +986,18 @@ def fetch_industry_data(
     if endpoint == "board_industry_name_ths":
         return ak.stock_board_industry_name_ths()
     if endpoint == "board_industry_cons_em":
-        return ak.stock_board_industry_cons_em(symbol=industry)
+        # v3.3.28：由 akshare 改为本项目直连（东财 clist + em_get 走镜像）。
+        # akshare 打 `29.push2` 被拒连，且备源 ths 不支持该 endpoint
+        # —— 此前两个源都不覆盖，get_industry_stocks / get_competitors 恒失败。
+        return _fetch_board_industry_cons_direct(industry)
     if endpoint == "board_concept_name_em":
         return ak.stock_board_concept_name_em()
     if endpoint == "board_concept_name_ths":
         return ak.stock_board_concept_name_ths()
     if endpoint == "sector_fund_flow_rank":
-        # 使用 curl_cffi 绕过系统代理（东财 push2 接口）
-        from curl_cffi import requests as _rq
-        _session = _rq.Session()
-        _session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Referer": "https://data.eastmoney.com/",
-        })
+        # 东财 push2 接口 —— 统一走 em_get（指纹伪装 + 全局节流 + 退避重试）
+        from .em_client import em_get
+
         _st_map = {"行业资金流": "2", "概念资金流": "3", "地域资金流": "1"}
         _ind_map = {"今日": "0", "5日": "5", "10日": "10"}
         _fs = f"m:90+t:{_st_map.get(sector_type, '2')}"
@@ -445,7 +1015,10 @@ def fetch_industry_data(
             ),
             "rt": "52975239",
         }
-        resp = _session.get(_url, params=_params, timeout=15, impersonate="chrome120")
+        resp = em_get(_url, params=_params,
+                      headers={"Referer": "https://data.eastmoney.com/"}, timeout=15)
+        if resp is None:
+            raise RuntimeError("sector_fund_flow_rank: 东财请求重试耗尽")
         resp.raise_for_status()
         _data = resp.json()
         _items = _data.get("data", {}).get("diff", [])
@@ -473,12 +1046,10 @@ def fetch_industry_data(
             return pd.DataFrame()
         return pd.DataFrame(_rows)
     if endpoint == "board_industry_hist_em":
-        kw: dict = {"symbol": industry, "period": period}
-        if start_date:
-            kw["start_date"] = start_date
-        if end_date:
-            kw["end_date"] = end_date
-        return ak.stock_board_industry_hist_em(**kw)
+        # v3.3.29：由 akshare 改为本项目直连（东财 → **同花顺兜底**）。
+        # 东财板块日K路由整条链路故障，同花顺板块K线免鉴权可用。
+        return _fetch_board_industry_hist_direct(
+            industry, period=period, start_date=start_date, end_date=end_date)
     raise ValueError(f"Unknown industry_data endpoint: {endpoint}")
 
 
@@ -608,12 +1179,14 @@ def fetch_macro_data(
 # ============================================================
 
 def fetch_fund_flow(code: str = "", curr_date: str = "", include_history: bool = True, **kwargs) -> dict:
-    """个股资金流向（直连东财 push2his API，curl_cffi 绕过系统代理）。
+    """个股资金流向（直连东财 push2his API）。
 
     返回与 em_push2 源相同的 dict 结构（realtime/history/signal）。
-    使用 curl_cffi 替代 requests，避免系统代理导致的 RemoteDisconnected。
+
+    v3.3.19：统一走 em_get（指纹伪装 + 全局节流 + 退避重试），
+    不再自建会话绕过限流。
     """
-    from curl_cffi import requests as _rq
+    from .em_client import em_get
 
     if not curr_date:
         curr_date = datetime.now().strftime("%Y-%m-%d")
@@ -625,15 +1198,6 @@ def fetch_fund_flow(code: str = "", curr_date: str = "", include_history: bool =
         "history": [],
         "signal": "neutral",
     }
-
-    _session = _rq.Session()
-    _session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Referer": "https://data.eastmoney.com/",
-    })
 
     secid = f"1.{code}" if code.startswith("6") else f"0.{code}"
     url = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
@@ -647,7 +1211,10 @@ def fetch_fund_flow(code: str = "", curr_date: str = "", include_history: bool =
     }
 
     try:
-        resp = _session.get(url, params=params, timeout=10)
+        resp = em_get(url, params=params,
+                      headers={"Referer": "https://data.eastmoney.com/"}, timeout=10)
+        if resp is None:
+            raise RuntimeError("资金流数据请求失败")
         resp.raise_for_status()
         data = resp.json()
         klines = data.get("data", {}).get("klines", [])
@@ -727,29 +1294,96 @@ def fetch_dragon_tiger(code: str = "", trade_date: str = "", look_back_days: int
 # ============================================================
 
 def fetch_industry_comparison(code: str = "", trade_date: str = "", top_n: int = 20, **kwargs) -> dict:
-    """行业对比（akshare stock_sector_fund_flow_rank）。返回与 em_push2 源相同的 dict 结构。"""
-    ak = _ak()
+    """行业对比（东财行业资金流排行）。返回与 em_push2 源相同的 dict 结构。
+
+    v3.3.26：由 akshare 改为**本项目直连**。akshare 的 `stock_sector_fund_flow_rank`
+    用裸 requests 打 `push2.eastmoney.com/api/qt/clist/get` —— 正是本项目
+    统一入口**已覆盖且已配镜像**的路径，经 `em_get` 可正常取到（走 push2delay），
+    而 akshare 绕过防封层故被拒连。
+    """
+    return _fetch_industry_comparison_direct(code=code, trade_date=trade_date, top_n=top_n)
+
+
+# 行业资金流排行的请求参数（对齐 akshare stock_sector_fund_flow_rank 的「今日/行业资金流」）
+_EM_CLIST_URL = "https://push2.eastmoney.com/api/qt/clist/get"
+_EM_SECTOR_FUNDFLOW_UT = "b2884a393a59ad64002292a3e90d46a5"
+# f62=主力净流入（排序键）；f104/f105=上涨/下跌家数；f204=主力净流入最大股
+_EM_SECTOR_FUNDFLOW_FIELDS = (
+    "f12,f14,f2,f3,f62,f184,f204,f205,f124,f104,f105"
+)
+_EM_SECTOR_PAGE_SIZE = 100
+
+
+def _fetch_industry_comparison_direct(code: str = "", trade_date: str = "",
+                                      top_n: int = 20) -> dict:
+    """直连东财行业资金流排行（走统一防封层 + 主机镜像）。
+
+    与 akshare 版本的差异（**有意为之**）：akshare 的字段集不含 f104/f105，
+    故它写死 `up_count/down_count = 0`；本实现在 fields 里补上这两项，
+    返回**真实的上涨/下跌家数** —— 更贴近本函数「与 em_push2 源相同的 dict 结构」
+    的既定意图（em_push2 源就是从 f104/f105 取的）。
+
+    分页策略：结果按主力净流入降序（`fid0=f62`），故只需取够 top_n 的页数，
+    不像 akshare 那样把全部分页都拉完。
+
+    Raises:
+        RuntimeError: 请求重试耗尽或返回空。
+    """
+    # 函数级导入（项目约定：便于测试 monkeypatch em_client.em_get）
+    from .em_client import em_get
+
     if not trade_date:
         trade_date = datetime.now().strftime("%Y-%m-%d")
+
     result: dict = {
-        "source": "AKShare stock_sector_fund_flow_rank",
+        "source": "东财 push2 行业资金流（直连）",
         "date": trade_date,
         "code": code or None,
         "industries": [],
     }
-    df = ak.stock_sector_fund_flow_rank(indicator="今日", sector_type="行业资金流")
-    if df is None or df.empty:
-        raise RuntimeError("AKShare 行业资金流数据为空")
-    for i, (_, row) in enumerate(df.iterrows()):
-        if i >= top_n:
+
+    want = max(int(top_n or 1), 1)
+    # 向上取整，避免引入 math（本模块未在顶层 import math）
+    pages = max(1, (want + _EM_SECTOR_PAGE_SIZE - 1) // _EM_SECTOR_PAGE_SIZE)
+    rows: list[dict] = []
+    for page in range(1, pages + 1):
+        params = {
+            "pn": str(page),
+            "pz": str(_EM_SECTOR_PAGE_SIZE),
+            "po": "1",              # 降序
+            "np": "1",
+            "ut": _EM_SECTOR_FUNDFLOW_UT,
+            "fltt": "2",
+            "invt": "2",
+            "fid0": "f62",          # 按主力净流入排序
+            "fs": "m:90 t:2",       # 行业板块
+            "stat": "1",
+            "fields": _EM_SECTOR_FUNDFLOW_FIELDS,
+            "rt": "52975239",
+        }
+        resp = em_get(_EM_CLIST_URL, params=params,
+                      headers={"Referer": "https://data.eastmoney.com/"}, timeout=15)
+        if resp is None:
+            raise RuntimeError("industry_comparison: 东财行业资金流请求重试耗尽")
+        resp.raise_for_status()
+        diff = ((resp.json() or {}).get("data") or {}).get("diff") or []
+        if not diff:
             break
+        rows.extend(diff)
+        if len(rows) >= want:
+            break
+
+    if not rows:
+        raise RuntimeError("industry_comparison: 东财行业资金流返回空")
+
+    for i, item in enumerate(rows[:want]):
         result["industries"].append({
             "rank": i + 1,
-            "name": str(row.get("板块", "")),
-            "change_pct": float(row.get("涨跌幅", 0) or 0),
-            "up_count": 0,
-            "down_count": 0,
-            "leader": str(row.get("领涨股票", "")),
+            "name": item.get("f14", ""),
+            "change_pct": item.get("f3", 0),
+            "up_count": item.get("f104", 0) or 0,
+            "down_count": item.get("f105", 0) or 0,
+            "leader": item.get("f204", ""),
         })
     return result
 
@@ -797,20 +1431,19 @@ def fetch_profit_forecast(symbol: str = "", **kwargs) -> dict:
     """
     import math
     import re
-    import requests as _rq
+
+    from astock_signals.antiban_http import get_client
 
     code = symbol
     url = f"https://basic.10jqka.com.cn/new/{code}/worth.html"
-    _headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36"
-        ),
-        "Referer": "https://basic.10jqka.com.cn/",
-    }
-    resp = _rq.get(url, headers=_headers, timeout=15)
-    resp.encoding = "gbk"
-    html = resp.text
+    _headers = {"Referer": "https://basic.10jqka.com.cn/"}
+    # v3.3.20：由裸 requests 收敛到统一防封层。
+    # 原实现 UA 是「残缺的 Mac UA」（无 Chrome/Safari 版本号）—— 这正是
+    # 服务端识别伪造客户端的典型特征，且该接口零节流。
+    resp = get_client("ths").get(url, headers=_headers, timeout=15)
+    if resp is None:
+        raise RuntimeError(f"{symbol} 同花顺一致预期请求重试耗尽")
+    html = resp.content.decode("gbk", errors="replace")
 
     thead_pat = re.compile(
         r"<thead[^>]*>\s*<tr>\s*<th>\s*年度\s*</th>\s*"
@@ -877,14 +1510,12 @@ def fetch_profit_forecast(symbol: str = "", **kwargs) -> dict:
     }
 
     try:
-        import urllib.request as _ur
-        prefix = "sh" if code.startswith("6") else "sz"
-        quote_url = f"https://qt.gtimg.cn/q={prefix}{code}"
-        req = _ur.Request(quote_url)
-        req.add_header("User-Agent", "Mozilla/5.0")
-        quote_resp = _ur.urlopen(req, timeout=5)
-        raw = quote_resp.read().decode("gbk")
-        vals = raw.split('"')[1].split("~") if '"' in raw else []
+        # v3.3.20：腾讯行情由裸 urllib（UA=Mozilla/5.0、零节流）收敛到
+        # http_fetchers 的腾讯传输层（指纹伪装 + 独立节流器 + 退避重试）。
+        # 函数级导入：保持 http_fetchers._tencent_quote_vals 可被 monkeypatch 替换。
+        from .http_fetchers import _tencent_quote_vals
+
+        vals = _tencent_quote_vals(code)
         if len(vals) >= 53:
             price = float(vals[3]) if vals[3] else 0
             pe_ttm = float(vals[39]) if vals[39] else 0
@@ -1079,12 +1710,133 @@ def fetch_hot_search_baidu(symbol: str = "A股", date: str = "", time: str = "�
 # hot_rank_data — 东方财富人气榜（多 endpoint）
 # ============================================================
 
+# ============================================================
+# hot_rank — 东财人气榜（直连版）
+#
+# v3.3.24：`rank` / `up` 两个 endpoint 由 akshare 改为**本项目直连**。
+#
+# 为什么要自己实现：akshare 的 `stock_hot_rank_em` / `stock_hot_up_em` 先用
+# 裸 requests POST `emappdata` 取榜单，**再用裸 requests GET
+# `push2.eastmoney.com/api/qt/ulist.np/get`** 取行情 —— 后者在 push2 节点
+# 故障时被直接拒连（实测 2026-09-20 `RemoteDisconnected`），
+# 而**同一个 URL 经 `em_get` 可正常取到**（自动走 push2delay 镜像）。
+# 也就是说这两个榜单本可用，只是 akshare 绕过了防封层。
+#
+# 其余 5 个 endpoint（detail/realtime/keyword/latest/relate）只打 emappdata
+# （实测可达），仍走 akshare。
+# ============================================================
+_EMAPPDATA_STOCKRANK = "https://emappdata.eastmoney.com/stockrank"
+_EM_ULIST_URL = "https://push2.eastmoney.com/api/qt/ulist.np/get"
+_EM_HOT_RANK_UT = "f057cbcbce2a86e2866ab8877db1d059"
+
+# endpoint -> (emappdata 路径, 排名变动字段名；无则 None)
+_HOT_RANK_DIRECT: dict[str, tuple[str, str | None]] = {
+    "rank": ("getAllCurrentList", None),          # 人气榜
+    "up": ("getAllHisRcList", "hrc"),             # 飙升榜（含「排名较昨日变动」）
+}
+
+# 行情字段（ulist.np 返回）：f2=最新价、f3=涨跌幅、f12=代码、f14=股票名称。
+# ⚠️ 注意上游返回的 key 顺序与 `fields` 参数顺序**不一致**（实测请求
+# `fields=f14,f3,f12,f2`，实际 key 顺序是 `f2,f3,f12,f14`）。
+# akshare 用「按位置赋列名」恰好蒙对了；本项目有过列错位事故（v3.3.16 fund_hold），
+# 故这里一律**按字段名取**，并按代码 join 两个列表。
+
+
+def _fetch_hot_rank_direct(kind: str) -> pd.DataFrame:
+    """直连东财人气榜 / 飙升榜（emappdata + push2 ulist.np，均走统一防封层）。
+
+    Returns:
+        DataFrame，列同 akshare 版本：
+          rank → 当前排名 / 代码 / 股票名称 / 最新价 / 涨跌额 / 涨跌幅
+          up   → 排名较昨日变动 / 当前排名 / 代码 / 股票名称 / 最新价 / 涨跌额 / 涨跌幅
+
+    Raises:
+        RuntimeError: 任一步请求重试耗尽或返回空。
+    """
+    # 函数级导入（项目约定：便于测试 monkeypatch em_client.em_get/em_post）
+    from .em_client import em_get, em_post
+
+    path, change_field = _HOT_RANK_DIRECT[kind]
+
+    payload = {
+        "appId": "appId01",
+        "globalId": "786e4c21-70dc-435a-93bb-38",
+        "marketType": "",
+        "pageNo": 1,
+        "pageSize": 100,
+    }
+    resp = em_post(f"{_EMAPPDATA_STOCKRANK}/{path}", json=payload, timeout=15)
+    if resp is None:
+        raise RuntimeError(f"hot_rank({kind}): emappdata 请求重试耗尽")
+    resp.raise_for_status()
+    rows = (resp.json() or {}).get("data") or []
+    if not rows:
+        raise RuntimeError(f"hot_rank({kind}): emappdata 返回空榜单")
+
+    # SZ000665 -> 0.000665；SH600519 -> 1.600519
+    marks = [("0." if "SZ" in str(r.get("sc", "")) else "1.") + str(r.get("sc", ""))[2:]
+             for r in rows]
+    params = {
+        "ut": _EM_HOT_RANK_UT,
+        "fltt": "2",
+        "invt": "2",
+        "fields": "f14,f3,f12,f2",
+        "secids": ",".join(marks),
+    }
+    resp2 = em_get(_EM_ULIST_URL, params=params, timeout=15)
+    if resp2 is None:
+        raise RuntimeError(f"hot_rank({kind}): push2 ulist 请求重试耗尽")
+    resp2.raise_for_status()
+    diff = ((resp2.json() or {}).get("data") or {}).get("diff") or []
+    if not diff:
+        raise RuntimeError(f"hot_rank({kind}): push2 ulist 返回空行情")
+
+    # ⚠️ **按代码 join，不按位置对齐**。
+    # 榜单（emappdata）与行情（ulist）是两个独立请求，条数或顺序都可能不一致
+    # （镜像 push2delay 对停牌股可能不返回行情）。若按位置拼，代码与名称会
+    # **静默错位** —— 正是本项目 v3.3.16 fund_hold 列错位的同类事故。
+    quote_by_code: dict[str, dict] = {}
+    for item in diff:
+        c = str(item.get("f12") or "").strip()
+        if c:
+            quote_by_code[c] = item
+
+    out_rows: list[dict] = []
+    for r in rows:                                  # 以榜单顺序为主，保持排名有序
+        sc = str(r.get("sc") or "")
+        code6 = sc[2:] if len(sc) > 2 else sc       # SZ002185 -> 002185
+        q = quote_by_code.get(code6, {})
+        price = pd.to_numeric(q.get("f2"), errors="coerce")
+        pct = pd.to_numeric(q.get("f3"), errors="coerce")
+        rec = {
+            "当前排名": r.get("rk"),
+            "代码": sc,                              # 与 akshare 一致：用 sc（如 SZ002185）
+            "股票名称": q.get("f14"),                # 缺失则为 None（不猜、不错位）
+            "最新价": price,
+            "涨跌额": price * pct / 100 if pd.notna(price) and pd.notna(pct) else None,
+            "涨跌幅": pct,
+        }
+        if change_field:
+            rec["排名较昨日变动"] = r.get(change_field)
+        out_rows.append(rec)
+
+    cols = ["当前排名", "代码", "股票名称", "最新价", "涨跌额", "涨跌幅"]
+    if change_field:
+        cols = ["排名较昨日变动", *cols]
+    df = pd.DataFrame(out_rows, columns=cols)
+
+    df["当前排名"] = pd.to_numeric(df["当前排名"], errors="coerce")
+    if change_field:
+        df["排名较昨日变动"] = pd.to_numeric(df["排名较昨日变动"], errors="coerce")
+    return df
+
+
 def fetch_hot_rank_data(endpoint: str = "rank", symbol: str = "", **kwargs) -> pd.DataFrame:
     """东方财富个股人气榜（多 endpoint 分派）。
 
     endpoint:
-      - rank:     全市场人气榜（ak.stock_hot_rank_em）
-      - up:       飙升榜（ak.stock_hot_up_em）
+      - rank:     全市场人气榜（**本项目直连**，v3.3.24）
+      - up:       飙升榜（**本项目直连**，v3.3.24）
       - detail:   个股历史趋势及粉丝特征（ak.stock_hot_rank_detail_em）
       - realtime: 个股实时变动（ak.stock_hot_rank_detail_realtime_em）
       - keyword:  个股热门关键词（ak.stock_hot_keyword_em）
@@ -1097,14 +1849,16 @@ def fetch_hot_rank_data(endpoint: str = "rank", symbol: str = "", **kwargs) -> p
 
     Returns:
         DataFrame
+
+    v3.3.24：`rank` / `up` 改走本项目直连（见 `_fetch_hot_rank_direct`）。
+    不再回退 akshare —— 它同样依赖 push2 且用裸 requests，只会多花时间。
     """
+    if endpoint in _HOT_RANK_DIRECT:
+        return _fetch_hot_rank_direct(endpoint)
+
     ak = _ak()
     try:
-        if endpoint == "rank":
-            df = ak.stock_hot_rank_em()
-        elif endpoint == "up":
-            df = ak.stock_hot_up_em()
-        elif endpoint == "detail":
+        if endpoint == "detail":
             df = ak.stock_hot_rank_detail_em(symbol=symbol)
         elif endpoint == "realtime":
             df = ak.stock_hot_rank_detail_realtime_em(symbol=symbol)
@@ -1301,6 +2055,7 @@ def fetch_fund_hold_direct(
         else date
     )
 
+    # 函数内导入（项目既有约定）：测试 monkeypatch em_client.em_get 后此处生效
     from .em_client import em_get
 
     rows: list = []
@@ -1319,6 +2074,10 @@ def fetch_fund_hold_direct(
             "pageNo": str(page),
         }
         resp = em_get(_EM_ZLSJ_URL, params=params, timeout=25)
+        if resp is None:
+            raise RuntimeError(
+                f"东财机构持仓({t}, {date}) 第 {page} 页请求重试耗尽"
+            )
         payload = resp.json()
         if not payload or not payload.get("data"):
             break

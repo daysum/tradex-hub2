@@ -173,10 +173,22 @@ class TestExceptionPropagation:
             fetch_hot_search_baidu()
 
     def test_hot_rank_data_raises(self, monkeypatch):
-        # 默认 endpoint=rank → ak.stock_hot_rank_em（会走网络的分支）
-        _patch_ak_raising(monkeypatch, "stock_hot_rank_em")
+        """不吞异常：底层失败必须上抛，让 SmartRouter 能降级到备源。
+
+        v3.3.24：`rank` / `up` 已改为本项目直连（不再走 akshare），
+        故改为让**直连路径**失败（模拟 em_post 请求重试耗尽）。
+        """
+        from tradex.data_sources import em_client
+
+        monkeypatch.setattr(em_client, "em_post", lambda *a, **k: None)
         with pytest.raises(RuntimeError):
             fetch_hot_rank_data(endpoint="rank")
+
+    def test_hot_rank_data_raises_for_akshare_endpoint(self, monkeypatch):
+        """仍走 akshare 的 endpoint（relate）同样不得吞异常。"""
+        _patch_ak_raising(monkeypatch, "stock_hot_rank_relate_em")
+        with pytest.raises(RuntimeError):
+            fetch_hot_rank_data(endpoint="relate", symbol="SZ000665")
 
     def test_xueqiu_hot_raises(self, monkeypatch):
         # 默认 endpoint=follow → ak.stock_hot_follow_xq（会走网络的分支）

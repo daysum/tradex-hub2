@@ -8,16 +8,10 @@ from collections import Counter
 from datetime import datetime
 import logging
 
-import requests as _requests
-
 from .anti_ban_client import em_get
+from .antiban_http import get_client, json_of
 
 logger = logging.getLogger(__name__)
-
-_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
 
 
 def _em_clist_get(fields: str = "", timeout: int = 15) -> list[dict]:
@@ -177,9 +171,13 @@ def get_limit_up_insight(code: str = "") -> dict:
     try:
         url = "https://data.10jqka.com.cn/dataapi/limit_up/limit_up_detail"
         params = {"code": code} if code else {}
-        headers = {"User-Agent": _UA}
-        r = _requests.get(url, params=params, headers=headers, timeout=10)
-        data = r.json()
+        headers = {"Referer": "https://data.10jqka.com.cn/"}
+        # v3.3.20：由裸 requests 收敛到统一防封层（指纹伪装 + 节流 + 退避重试）
+        r = get_client("ths").get(url, params=params, headers=headers, timeout=10)
+        if r is None:
+            result["error"] = "同花顺 limit_up_detail 请求重试耗尽"
+            return result
+        data = json_of(r, fallback_encoding="gbk")
         if data.get("code", 0) != 0:
             result["error"] = data.get("msg", "unknown error")
             return result
