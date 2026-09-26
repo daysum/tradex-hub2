@@ -59,24 +59,34 @@ def _ak():
 
 
 # ============================================================
-# K 线周期归一化（v3.3.14 新增）
+# K 线周期归一化（v3.3.14 新增；v3.3.30 补分钟周期）
 # ============================================================
 # SmartRouter 会把同一个 period 参数**原样转发**给主源(eltdx)与备源(akshare)，
 # 但两源值域不同：eltdx 认 day/week/month，akshare 认 daily/weekly/monthly。
 # eltdx 源内部有 _normalize_period() 归一化，akshare 源此前没有 ——
 # 于是传 'day' 时主源正常、一旦降级到 akshare 就 KeyError('day')，降级链在该值下必断。
 # 这里做反向归一化，使两个源的 period 语义对齐。
+#
+# v3.3.30 BREAKING：'1m' 由「月」改为「1 分钟」，与 eltdx 主源口径保持一致
+# （月线改用 'month' / 'monthly' / '1mo'；'m' 保留兼容）。同时补分钟周期，
+# 使备源能真正覆盖 1m/5m/15m/30m/60m，而不是静默回落到日线。
 _AK_PERIOD_ALIASES = {
     "day": "daily", "daily": "daily", "d": "daily", "1d": "daily",
     "week": "weekly", "weekly": "weekly", "w": "weekly", "1w": "weekly",
-    "month": "monthly", "monthly": "monthly", "m": "monthly", "1m": "monthly",
+    "month": "monthly", "monthly": "monthly", "m": "monthly", "1mo": "monthly",
+    # 分钟周期（东财 klt=1/5/15/30/60）
+    "1m": "1m", "1min": "1m", "minute": "1m",
+    "5m": "5m", "5min": "5m",
+    "15m": "15m", "15min": "15m",
+    "30m": "30m", "30min": "30m",
+    "60m": "60m", "60min": "60m", "1h": "60m",
 }
 
 
 def _normalize_ak_period(period: str) -> str:
-    """把 eltdx 风格周期名(day/week/month)转成 akshare 期望的(daily/weekly/monthly)。
+    """把 eltdx 风格周期名(day/week/month)转成备源内部规范名。
 
-    已是 akshare 风格的值保持不变；未识别的值原样透传，交由 akshare 自行报错。
+    已是备源风格的值保持不变；未识别的值原样透传，由 `_norm_klt` / akshare 报错。
     """
     key = str(period or "").strip().lower()
     return _AK_PERIOD_ALIASES.get(key, period)
@@ -117,6 +127,7 @@ def fetch_historical_kline(
     start_date: str = "",
     end_date: str = "",
     adjust: str = "qfq",
+    count: int = 0,
     **kwargs,
 ):
     """历史 K 线（中文列名 DataFrame）。
@@ -124,6 +135,9 @@ def fetch_historical_kline(
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
     v3.3.14: period 先做归一化(day/week/month → daily/weekly/monthly)，
     使本备源与 eltdx 主源的周期语义对齐，避免路由原样透传时降级链断裂。
+    v3.3.30: 支持分钟周期（1m/5m/15m/30m/60m，东财 klt=1/5/15/30/60）。
+    分钟K窗口有限，故带 lmt 并只返回**最近 count 根**（count=0 表示不截断）。
+    ⚠️ 未识别周期**直接抛错**，不再静默回落到日 K（见 `_norm_klt`）。
 
     v3.3.27：由 akshare 改为**本项目直连**，两层：
       1. 东财 push2his kline（走 `em_get`，享节流/重试/镜像/熔断）——
@@ -144,13 +158,39 @@ def fetch_historical_kline(
     return _fetch_historical_kline_direct(
         sym, period=_normalize_ak_period(period),
         start_date=start_date, end_date=end_date, adjust=adjust,
+        count=int(count or 0),
     )
 
 
 # 东财 push2his kline 的 klt / fqt 映射（与 akshare stock_zh_a_hist 一致）
-_EM_KLT = {"daily": "101", "weekly": "102", "monthly": "103"}
+#   klt: 1/5/15/30/60 = 1/5/15/30/60 分钟；101=日 102=周 103=月
+_EM_KLT = {
+    "1m": "1", "5m": "5", "15m": "15", "30m": "30", "60m": "60",
+    "daily": "101", "weekly": "102", "monthly": "103",
+}
 _EM_FQT = {"qfq": "1", "hfq": "2", "": "0"}
+# 分钟周期集合：需要 lmt（东财分钟K窗口有限，返回为窗口内自早到晚）
+_EM_MINUTE_KLTS = frozenset({"1", "5", "15", "30", "60"})
+# 分钟K一次请求的 lmt 上限（东财窗口本身有限，给大值让上游决定实际可返回量）
+_EM_MINUTE_MAX_BARS = 10000
 _EM_KLINE_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
+
+
+def _norm_klt(period: str) -> str:
+    """周期 → 东财 klt。**未识别周期必须抛错**。
+
+    历史事故（v3.3.30 修复）：此前此处是 `_EM_KLT.get(period, "101")`，
+    任何未识别周期都会静默落到 101=日 K —— 上层请求 5 分钟却拿到 1498 根日线，
+    全程无告警。现在未识别周期直接抛错，宁可报错也不给错数据。
+    """
+    key = str(period or "").strip().lower()
+    klt = _EM_KLT.get(_AK_PERIOD_ALIASES.get(key, key))
+    if klt is None:
+        raise ValueError(
+            f"akshare/东财 kline 不支持周期 {period!r} "
+            f"(supported: {sorted(set(_AK_PERIOD_ALIASES.values()) | set(_EM_KLT))})"
+        )
+    return klt
 # f51..f61 的语义（东财 kline 返回的是逗号串，顺序由 fields2 决定）
 #   f51=日期 f52=开 f53=收 f54=高 f55=低 f56=成交量(手) f57=成交额(元)
 #   f58=振幅% f59=涨跌幅% f60=涨跌额 f61=换手率%
@@ -188,23 +228,32 @@ def _to_tencent_sym(symbol: str) -> str:
 
 
 def _fetch_kline_from_em(sym: str, period: str, start_date: str,
-                         end_date: str, adjust: str) -> pd.DataFrame:
-    """东财 push2his kline（经统一防封层）。失败抛异常由上层兜底。"""
+                         end_date: str, adjust: str, count: int = 0) -> pd.DataFrame:
+    """东财 push2his kline（经统一防封层）。失败抛异常由上层兜底。
+
+    v3.3.30：支持分钟周期（klt=1/5/15/30/60）。分钟K在东财侧窗口有限，
+    故显式带 lmt 并只取尾部（最新）count 根，语义对齐 eltdx 的「最近 N 根」。
+    """
     from .em_client import em_get
 
     code6 = _code6(sym)
     if not code6:
         raise RuntimeError("historical_kline: symbol/code is required")
+    klt = _norm_klt(period)
+    is_minute = klt in _EM_MINUTE_KLTS
     params = {
         "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": _EM_KLINE_FIELDS2,
         "ut": "7eea3edcaed734bea9cbfc24409ed989",
-        "klt": _EM_KLT.get(period, "101"),
+        "klt": klt,
         "fqt": _EM_FQT.get(adjust, "0"),
         "secid": f"{1 if code6.startswith('6') else 0}.{code6}",
         "beg": str(start_date or "0").replace("-", ""),
         "end": str(end_date or "20500101").replace("-", ""),
     }
+    if is_minute:
+        # 分钟K窗口有限：先要足够大的 lmt，再在下方尾部截取
+        params["lmt"] = str(_EM_MINUTE_MAX_BARS)
     resp = em_get(_EM_KLINE_URL, params=params, timeout=15)
     if resp is None:
         raise RuntimeError(f"historical_kline({code6}): 东财 kline 请求重试耗尽")
@@ -221,10 +270,16 @@ def _fetch_kline_from_em(sym: str, period: str, start_date: str,
     df = pd.DataFrame([r[:11] for r in rows], columns=_EM_KLINE_FIELD_COLUMNS)
     df["股票代码"] = code6
     df = df[_KLINE_COLUMNS]
-    df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
+    if is_minute:
+        # 分钟K日期形如 "2026-09-24 09:31"，**不能** .dt.date（会把时分抹掉）
+        df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M")
+        if count and len(df) > int(count):
+            df = df.tail(int(count))
+    else:
+        df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
     for col in _KLINE_COLUMNS[2:]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+    return df.reset_index(drop=True)
 
 
 def _fetch_kline_from_tencent(sym: str, period: str, start_date: str,
@@ -234,11 +289,21 @@ def _fetch_kline_from_tencent(sym: str, period: str, start_date: str,
     字段布局（已用 eltdx 主源逐字段交叉验证，2026-09-18 600519）：
         [0]日期 [1]开 [2]收 [3]高 [4]低 [5]成交量(手) [6]{} [7]换手率% [8]成交额(**万元**)
     腾讯**不提供**振幅/涨跌幅/涨跌额，按前一根收盘价自行计算。
+
+    v3.3.30：**显式拒绝分钟周期**。腾讯 ifzq appstock 的 per 参数只认
+    day/week/month，若传分钟会被默默当成 day，属同类静默错误（与东财 klt 落默认值同源）。
     """
     from .http_fetchers import _ensure_tencent_session, _tencent_throttle
     from astock_signals.antiban_http import get_bytes, TENCENT_MAX_RETRY
 
-    per = {"daily": "day", "weekly": "week", "monthly": "month"}.get(period, "day")
+    norm = str(period or "").strip().lower()
+    if norm in ("1m", "1min", "minute", "5m", "5min", "15m", "15min",
+                "30m", "30min", "60m", "60min", "1h"):
+        raise ValueError(f"腾讯 kline 源不支持分钟周期 {period!r}（仅 day/week/month）")
+
+    per = {"daily": "day", "weekly": "week", "monthly": "month"}.get(norm)
+    if per is None:
+        raise ValueError(f"腾讯 kline 源不支持周期 {period!r}（仅 day/week/month）")
     adj = {"qfq": "qfq", "hfq": "hfq"}.get(adjust, "")
     tsym = _to_tencent_sym(sym)
     beg = _norm_date_ymd(start_date) or "1990-01-01"
@@ -302,7 +367,8 @@ def _fetch_kline_from_tencent(sym: str, period: str, start_date: str,
 
 def _fetch_historical_kline_direct(sym: str, period: str = "daily",
                                    start_date: str = "", end_date: str = "",
-                                   adjust: str = "qfq") -> pd.DataFrame:
+                                   adjust: str = "qfq",
+                                   count: int = 0) -> pd.DataFrame:
     """历史 K 线直连：东财（原生复权/振幅）→ 腾讯（兜底）。
 
     ⚠️ 关于「不要退回 akshare」的说明（v3.3.27）：
@@ -319,6 +385,8 @@ def _fetch_historical_kline_direct(sym: str, period: str = "daily",
     for name, fn in (("东财 push2his", _fetch_kline_from_em),
                      ("腾讯", _fetch_kline_from_tencent)):
         try:
+            if fn is _fetch_kline_from_em:
+                return fn(sym, period, start_date, end_date, adjust, count=count)
             return fn(sym, period, start_date, end_date, adjust)
         except Exception as exc:  # noqa: BLE001 - 逐层降级
             errors.append(f"{name}({exc})")

@@ -13,6 +13,8 @@ Data source: 通达信本地 vipdoc 二进制文件（.day/.lc5/.lc1），
 
 from __future__ import annotations
 
+import json
+
 from mcp.server.fastmcp import FastMCP
 
 from ..data_sources.tdx_local import detect_tdx_dir, fetch_local_kline, fetch_local_minute
@@ -53,7 +55,10 @@ def register(mcp: FastMCP):
                 )
             df = df.tail(count)
             info = {"code": symbol, "tdx_dir": str(tdx_dir) if tdx_dir else "", "rows": len(df)}
-            return dict_to_json(info) + "\n" + df_to_json(df)
+            # v3.3.30 修复：原为 dict_to_json(info) + "\n" + df_to_json(df)，
+            # 拼出「{...}\n[...]」两段 JSON —— **不是合法 JSON**，任何标准解析器都会失败。
+            # 此前因本机读不到通达信数据、一直走 error_response 分支而未暴露。
+            return dict_to_json({**info, "data": json.loads(df_to_json(df))})
         except Exception as e:  # noqa: BLE001
             return error_response(f"读取本地日线失败: {e}", "get_local_kline")
 
@@ -83,6 +88,7 @@ def register(mcp: FastMCP):
                 )
             df = df.tail(count)
             info = {"code": symbol, "period": period, "rows": len(df)}
-            return dict_to_json(info) + "\n" + df_to_json(df)
+            # v3.3.30 修复：同 get_local_kline —— 原拼接 "{...}\n[...]" 不是合法 JSON。
+            return dict_to_json({**info, "data": json.loads(df_to_json(df))})
         except Exception as e:  # noqa: BLE001
             return error_response(f"读取本地分钟线失败: {e}", "get_local_minute")

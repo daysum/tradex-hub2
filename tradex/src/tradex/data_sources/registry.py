@@ -44,6 +44,14 @@
   | fund_hold            | em_zlsj_direct     | akshare_fund_hold |           |           |
   | wencai_query         | pywencai           |               |               |           |
   | wencai_news          | iwencai_openapi    |               |               |           |
+  | recent_minute        | eltdx              |               |               | 是        |
+
+  说明（v3.3.30）：
+    - minute_history（0x0fb4）与 recent_minute（0x0feb）是**两个不同协议**的历史分时，
+      覆盖范围不同，均为 eltdx 独占源，不要互相替代。
+    - historical_kline / full_kline / adjusted_kline 自 v3.3.30 起支持分钟周期
+      （1m/5m/15m/30m/60m）；historical_kline 的备源 akshare 也支持分钟，
+      但备源分钟窗口有限（仅近期），全量分钟历史只能走 eltdx。
 """
 
 from __future__ import annotations
@@ -109,6 +117,8 @@ def _do_register() -> None:
     router.register("security_codes", "eltdx", ef.fetch_security_codes, priority=1, exclusive=True)
     router.register("all_a_shares", "eltdx", ef.fetch_all_a_shares, priority=1, exclusive=True)
     router.register("minute_history", "eltdx", ef.fetch_minute_history, priority=1, exclusive=True)
+    # v3.3.30 新增：近期历史分时（协议 0x0feb），与 minute_history(0x0fb4) 覆盖范围不同
+    router.register("recent_minute", "eltdx", ef.fetch_recent_minute, priority=1, exclusive=True)
     router.register("minute_aux", "eltdx", ef.fetch_minute_aux, priority=1, exclusive=True)
     router.register("today_ticks", "eltdx", ef.fetch_today_ticks, priority=1, exclusive=True)
     router.register("opening_match", "eltdx", ef.fetch_opening_match, priority=1, exclusive=True)

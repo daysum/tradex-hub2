@@ -292,7 +292,12 @@ docker compose up -d
 | `eltdx_get_ticks` | 逐笔成交（价格/量/买卖方向） |
 | `eltdx_get_f10` | F10资料（公司概况/题材归因/财务诊断） |
 | `eltdx_get_minutes` | 分时数据（1分钟K线） |
-| `eltdx_get_kline` | K线（日/周/月/5m/15m/30m/60m） |
+| `eltdx_get_kline` | K线单页（分钟 1m/5m/15m/30m/60m + 日/周/月/季/年，count ≤ 800） |
+| `eltdx_get_full_kline` | 全量K线（自动分页+升序重排，支持 adjust / max_pages） |
+| `eltdx_get_adjusted_kline` | 复权K线（qfq/hfq，支持分钟周期与 all_pages 分页） |
+| `eltdx_get_minute_history` | 历史分时（指定日 0x0fb4，约 240 点/日） |
+| `eltdx_get_recent_minutes` | 近期历史分时（0x0feb） |
+| `eltdx_get_security_codes` | 证券代码表（market=sh/sz/bj/all，kind=stock/a_share/etf/index/st/suspended） |
 
 </details>
 

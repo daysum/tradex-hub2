@@ -4,6 +4,140 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 
+## [3.3.30] - 2026-09-26
+
+本轮主题：**分钟级 K 线全线打通 + 消灭两个「静默错数据」缺陷**。
+
+### Fixed
+
+- **`historical_kline` 请求 `period="5m"` 时静默返回日线（P0）。**
+
+  链路：eltdx 源 `_normalize_period` 只认 day/week/month，遇到 `5m` 抛
+  `ValueError` → SmartRouter 按设计降级 akshare → 东财参数构造里写的是
+  `_EM_KLT.get(period, "101")`，**未识别周期一律落默认值 `101`=日K** →
+  调用方拿到 1498 根日线（首行日期 2020-07-27），**全程没有任何告警**。
+
+  修法（两处一起改，缺一不可）：
+  - `eltdx_fetchers._normalize_period` 支持分钟周期（见 Changed）；
+  - `akshare_fetchers` 新增 `_norm_klt()`，**未识别周期直接抛 ValueError**，
+    并把 `_EM_KLT` 补全为 `1m/5m/15m/30m/60m → 1/5/15/30/60`（东财原生支持分钟）。
+  另：腾讯备源 `ifzq` 的 `per` 参数只认 day/week/month，此前同样会默默当成 day
+  —— 现显式拒绝分钟周期（`_fetch_kline_from_tencent`）。
+
+- **`period="1m"` 返回月线（P0）。**
+
+  两个源的别名表都写着 `"1m": "month"`（akshare 侧 `"1m": "monthly"`），
+  而 `fetch_full_kline` 不做归一化 → 同一参数名 `1m`
+  在 `eltdx_get_kline` 是「月线」、在 `eltdx_get_full_kline` 是「1 分钟」，
+  **语义相反**。现统一为「1 分钟」，全链路口径一致（见 Changed）。
+
+- **`adjusted_kline` 分钟周期硬失败。** `fetch_adjusted_kline` 走归一化，
+  分钟周期被拒；该路由是 eltdx **独占源**，无备源可降级，直接
+  `RuntimeError: unsupported period: '5m'`。现放开分钟周期。
+  （实测 eltdx 3.2.2 `bars.get(period="5m", adjust="qfq")` 底层完全可用。）
+
+- **`fetch_full_kline` 的 `max_pages` 默认 30 会触发 SDK 的硬报错。**
+  `bars.get(all_pages=True)` 在「达到 max_pages 仍未出现空页」时抛
+  `RuntimeError: bars.get reached max_pages`（不静默截断）。1 分钟全量实测
+  约 2.2 万根 ≈ 28 页，30 页对日线够、对分钟周期边界很近。默认值放宽到
+  SDK 默认的 200，并暴露给工具层。
+
+- **备源分钟 K 线的日期被截断。** `_fetch_kline_from_em` 统一做
+  `pd.to_datetime(...).dt.date`，会把分钟 K 的时分抹掉。现按周期分流：
+  分钟周期输出 `"YYYY-MM-DD HH:MM"`，日线及以上仍为 `date`。
+
+- **`get_local_kline` / `get_local_minute` 返回非法 JSON（既有缺陷，本轮暴露）。**
+  两处均写作 `dict_to_json(info) + "\n" + df_to_json(df)` —— 把
+  `{...}`（元信息）与 `[...]`（数据行）用换行拼成一个字符串，**不是合法 JSON**。
+  此前本机读不到通达信 vipdoc 时恒走 `error_response` 分支，故一直未暴露；
+  本轮本机有本地数据后，`live_smoke` 才判出「返回非法 JSON」。
+  现合并为单个对象：`dict_to_json({**info, "data": json.loads(df_to_json(df))})`。
+
+- **`fetch_full_kline` / `fetch_adjusted_kline` 新增 `_clamp_page_size` 护栏。**
+  冒烟验收暴露：`page_size` 是**形参名精确匹配**式传参，`live_smoke` 的通用参数池
+  带着 `"page_size": 5`（本意服务巨潮公告分页），新加的 `page_size` 形参把它接住 →
+  每页只取 5 根 → 6012 根需 1203 页 → 撞穿 200 页上限 →
+  `RuntimeError: bars.get reached max_pages`。
+  根因是「**参数名撞车 + 无下限护栏**」，故在 fetcher 层统一兜底：
+  `_clamp_page_size()` 把非法值归一为 800、小于 `_PAGE_SIZE_FLOOR`(100) 的抬到 100，
+  使**任何**传入路径都不会再因小页长而失败。
+
+### Changed
+
+- **BREAKING：`period="1m"` 语义由「月线」改为「1 分钟」**，与 eltdx 官方口径
+  （`docs/methods/7709-K线周期线.md`）对齐。
+  - 月线请改用 `month` / `monthly` / `1mo`；
+  - 短别名 `m` 仍保留为月线（兼容旧调用，不推荐）；
+  - 若外部脚本/技能此前用 `period="1m"` 取月线，升级后需改为 `1mo`。
+  - 影响面已核：仓库内无 `period="1m"` 调用点。
+
+- `_normalize_period` 现支持 `quarter`/`q`/`1q` 与 `year`/`y`/`1y`
+  （eltdx 底层原生支持，此前被拒绝）。
+
+- `_fetch_historical_kline_direct` / `fetch_historical_kline` 新增 `count` 形参，
+  用于对备源分钟 K 做「最近 N 根」尾部截取（语义对齐 eltdx）。
+
+### Added
+
+- **分钟 K 线（`1m/5m/15m/30m/60m`）全链路支持**，覆盖：
+  - `eltdx_get_kline`（单页，`count ≤ 800`，新增越界校验）
+  - `eltdx_get_adjusted_kline`（复权 × 分钟，新增 `all_pages`/`max_pages`）
+  - `eltdx_get_full_kline`（全量分页，新增 `adjust`/`max_pages`/`page_size`）
+  - 备源同样支持分钟（东财 `klt=1/5/15/30/60`），但**窗口有限、仅近期**。
+
+- **`eltdx_get_security_codes` 新增 `kind` 品种快捷参数**：
+  `stock`（A+B 股）/ `a_share` / `etf` / `index` / `st`（ST 名单）/
+  `suspended`（停牌名单）。下推到数据源层（`codes.stocks()` 等），
+  比 `category` 后置过滤更省流量、更准。
+  例：`market='bj', kind='stock'` → 北交所股票表（实测 350 只，
+  而 `market='bj'` 不带 kind 会返回全部品种 385 条，含指数/ETF/债券）。
+
+- **新增 `eltdx_get_recent_minutes`**（工具数 129 → **130**）。
+  底层为 `client.minutes.recent`（协议 `0x0feb`），与既有
+  `eltdx_get_minute_history`（`0x0fb4`，指定日）、`eltdx_get_minutes`（当日）
+  构成分时三件套。**两者是不同协议、覆盖范围不同，不可互相替代。**
+  新增路由 `recent_minute`（eltdx 独占源；数据源总数 102 → **103**，
+  数据类型 78 → **79**）。
+  设计取舍：该接口空结果**返回空 DataFrame 而非抛错** —— 它是独占源，
+  抛错会被 SmartRouter 记为源失败、污染健康评分（非交易日返回空是正常的）。
+  > ⚠️ **实测（2026-09-26）：该命令当前主站不返回数据。** 对沪深京三种标的、
+  > 从当日前推多个交易日、`"20260918"` 与 `"2026-09-18"` 两种日期格式，
+  > 一律返回 **0 点**；同标的同日期下 `minutes.today` 与 `minutes.history`
+  > 均正常返回 240 点。SDK 侧 `0x0FEB` 标记为 `required_for_1_0=False`
+  > （非必需命令），报文构造在 Rust native 层，SDK 层无法进一步诊断。
+  > 故本工具**保留但不承诺有数据**，待上游修复后即可自动可用；
+  > 详见 `docs/known-issues.md` I 组。
+
+- K 线类工具返回体新增 `period_canonical` 字段（归一化后的周期名），
+  便于调用方核对「没有发生静默换周期」。
+
+### 验证
+
+- `pytest -m "not network"`（tradex/tests）：**165 passed**（基线 41 + 新增 124）
+- `pytest -m "not network"`（仓库根 tests/）：**729 passed**，0 failed
+- 真实主站端到端（`bj920185`，2026-09-26 凌晨实测）：
+  - `historical_kline period=5m` → `src=eltdx`，首行 `2026-09-23 14:55`
+    （修复前：`src=akshare`，首行 `2020-07-27`，日线）
+  - `historical_kline period=1m` → 分钟粒度（修复前：`2022-08-31` 月线）
+  - `adjusted_kline period=5m adjust=qfq` → `src=eltdx` 正常
+  - `full_kline period=1m max_pages=80` → 22560 根，升序 `2026-05-15 09:31 → 2026-09-24 15:00`
+  - `full_kline period=day adjust=qfq` → 1498 根，升序 `2020-07-27 → 2026-09-24`
+  - `security_codes market=bj kind=stock` → 350 条
+  - `period="badxyz"` → **两个源都报错**（修复前：akshare 静默返回日线）
+- **全量真实冒烟**（`python scripts/live_smoke.py --out live_smoke_report.md`，7m51s，115 项）：
+  本次改动引入的 **2 个回归已全部修复** ——
+  `full_kline [eltdx]` 由 `FAIL` 恢复 `OK`（`page_size` 护栏生效，此前因冒烟通用池传入
+  `page_size=5` 而撞穿 `max_pages`）；`get_local_kline` / `get_local_minute` 输出合法 JSON。
+  MCP 工具层 130 项**无 `FAIL`**。
+  冒烟期间新出现 2 项 `FAIL`（`industry_quotes [em_push2]`、`xueqiu_hot [akshare_xueqiu_hot]`）
+  经逐个复核**均为上游故障，与本次改动无关**（本次未触碰相关模块）：
+  东财 `push2`/`push2delay`/`push2his` 三台主机同时拒连；雪球接口返回非 JSON（反爬），
+  但 `xueqiu_hot` 备源 `ths_hot` 与工具层 `get_xueqiu_hot` 均正常。
+  `recent_minute [eltdx]` 为 `EMPTY`（上游 `0x0feb` 不可用，见 known-issues I 组，属预期）。
+- 同步更新「数量锁」测试：工具数 129→130、数据源 102→103、数据类型 78→79、
+  以及两处 `1m` 口径断言（`tests/test_p2_cleanup_regression.py`、
+  `tests/test_v3314_fixes.py`）。
+
 ## [3.3.29] - 2026-09-20
 
 ### Fixed

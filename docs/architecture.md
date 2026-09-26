@@ -6,8 +6,10 @@
 
 tradex-hub 是为 AI Agent（Trae / Claude Code / Cursor / Dify / LangChain）提供 A 股金融数据 MCP 接口的统一数据层。
 
-- **MCP 工具总数**：89 个（v3.1.4 口径；v3.3.9 已扩至 129 个，见 README）
-- **数据源**：data_sources 数据源层（25 类型 34 源）→ SmartRouter 全量路由（eltdx 主 + AKShare/东财/同花顺备）
+- **MCP 工具总数**：130 个（v3.3.30 口径；本文件其余小节为 v3.1.4 时期内容，工具/数据源清单以 README 与 `tradex-hub-接口与安装手册.md` 为准）
+- **数据源**：data_sources 数据源层（79 类型 103 源）→ SmartRouter 全量路由（eltdx 主 + AKShare/东财/同花顺备）
+  - v3.3.30 起 `historical_kline` / `full_kline` / `adjusted_kline` 支持分钟周期
+    （1m/5m/15m/30m/60m），新增 `recent_minute` 路由（近期历史分时 0x0feb）
 - **传输方式**：stdio（本地 MCP Server，默认）+ HTTP 网关（v3.3.12+，`python -m tradex --http`，单端口提供 Streamable HTTP `/mcp` + legacy SSE `/sse` + `/health`，见 `tradex/http_server.py`）
 - **包名**：tradex（v3.3.18），astock_signals 已并入本仓 tradex/src/astock_signals 作为唯一主源（v3.3.11，独立仓已退役）
 

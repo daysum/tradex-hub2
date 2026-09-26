@@ -116,6 +116,48 @@ def _normalize_stream_code(code: str) -> str:
     return code
 
 
+def _canonical_period(period: str) -> str:
+    """周期名 → 规范名（如 1min→1m、monthly→month）；无法识别时原样返回。
+
+    仅用于返回体回执，便于调用方核对「没有发生静默换周期」。
+    """
+    try:
+        from ..data_sources.eltdx_fetchers import _normalize_period
+
+        return _normalize_period(period)
+    except Exception:  # noqa: BLE001 - 回执字段不应影响主流程
+        return str(period or "")
+
+
+def _df_to_bars(df) -> list[dict]:
+    """K 线 DataFrame（中文列名）→ 工具层 bars 列表。"""
+    bars = []
+    for _, row in df.iterrows():
+        bars.append({
+            "date": str(row.get("日期", row.get("date", ""))),
+            "open": float(row.get("开盘", row.get("open", 0)) or 0),
+            "high": float(row.get("最高", row.get("high", 0)) or 0),
+            "low": float(row.get("最低", row.get("low", 0)) or 0),
+            "close": float(row.get("收盘", row.get("close", 0)) or 0),
+            "volume": float(row.get("成交量", row.get("volume", 0)) or 0),
+            "amount": float(row.get("成交额", row.get("amount", 0)) or 0),
+        })
+    return bars
+
+
+def _df_to_points(df) -> list[dict]:
+    """分时 DataFrame（中文列名）→ 工具层 points 列表。"""
+    points = []
+    for _, row in df.iterrows():
+        points.append({
+            "time": str(row.get("时间", "")),
+            "price": float(row.get("价格", 0) or 0),
+            "avg_price": float(row.get("均价", 0) or 0),
+            "volume": float(row.get("成交量", 0) or 0),
+        })
+    return points
+
+
 # ============================================================
 # MCP 工具注册
 # ============================================================
@@ -362,14 +404,24 @@ def register(mcp: FastMCP):
         """
         获取股票 K 线数据（SmartRouter 路由，优先 eltdx 数据源）。
 
-        支持日/周/月/分钟等多种周期。
+        支持分钟/日/周/月/季/年周期。
 
         Args:
             code: 股票代码，如 "000001"
-            period: 周期，"day" / "week" / "month" / "5m" / "15m" / "30m" / "60m"
-            count: 返回 K 线根数（默认 100）
+            period: 周期。分钟：'1m'/'1min'/'5m'/'15m'/'30m'/'60m'/'1h'；
+                    日线及以上：'day'/'daily'/'d'、'week'/'w'、'month'/'monthly'/'1mo'、
+                    'quarter'/'q'、'year'/'y'。（'m' 兼容旧写法=月线）
+            count: 返回 K 线根数（默认 100，单页上限 800；需要全量请用 eltdx_get_full_kline）
+
+        注意：'1m' 表示 **1 分钟**（v3.3.30 起，与 eltdx 官方口径一致），
+        月线请用 'month' 或 '1mo'。
         """
         try:
+            count = int(count or 0)
+            if count <= 0:
+                return _err("count must be a positive integer (1~800)")
+            if count > 800:
+                return _err("count 单页上限为 800，需要更多请用 eltdx_get_full_kline")
             start = time.time()
             df, _src = _router.route(
                 "historical_kline", code=code, period=period, count=count
@@ -379,17 +431,7 @@ def register(mcp: FastMCP):
             if df is None or df.empty:
                 return _no_data(f"no kline bars for period={period}")
 
-            bars = []
-            for _, row in df.iterrows():
-                bars.append({
-                    "date": str(row.get("日期", row.get("date", ""))),
-                    "open": float(row.get("开盘", row.get("open", 0)) or 0),
-                    "high": float(row.get("最高", row.get("high", 0)) or 0),
-                    "low": float(row.get("最低", row.get("low", 0)) or 0),
-                    "close": float(row.get("收盘", row.get("close", 0)) or 0),
-                    "volume": float(row.get("成交量", row.get("volume", 0)) or 0),
-                    "amount": float(row.get("成交额", row.get("amount", 0)) or 0),
-                })
+            bars = _df_to_bars(df)
 
             if not bars:
                 return _no_data(f"no kline bars for period={period}")
@@ -397,6 +439,7 @@ def register(mcp: FastMCP):
             return _ok({
                 "code": _strip_prefix(code),
                 "period": period,
+                "period_canonical": _canonical_period(period),
                 "latency_ms": latency_ms,
                 "bar_count": len(bars),
                 "bars": bars,
@@ -468,26 +511,33 @@ def register(mcp: FastMCP):
             return _err(f"stream health query failed: {e}")
 
     @mcp.tool()
-    async def eltdx_get_security_codes(market: str = "all", category: str = "") -> str:
+    async def eltdx_get_security_codes(
+        market: str = "all", category: str = "", kind: str = ""
+    ) -> str:
         """
-        获取全市场证券代码表（eltdx 精确分类，v3.3.7 新增）。
+        获取全市场证券代码表（eltdx 精确分类，v3.3.7 新增；v3.3.30 增 kind 品种快捷）。
 
         返回权威证券代码清单，含代码、名称、类别（a_share/etf/index/bond 等）、
         板块（主板/创业板/科创板）。相比行情快照更权威：含停牌股、精确分类。
 
         Args:
             market: 市场，'sh' / 'sz' / 'bj' / 'all'（默认 all，沪深京三市场）
-            category: 类别过滤，如 'a_share'（A股）、'etf'、'index'，空则不过滤
+            category: 类别过滤（在返回结果上后置过滤），如 'a_share'、'etf'、'index'
+            kind: 品种快捷（下推到数据源，比 category 更省流量、更准）：
+                  'stock'（A+B 股）/ 'a_share' / 'etf' / 'index' /
+                  'st'（ST名单）/ 'suspended'（停牌名单，返回仅含代码）
+
+        示例：market='bj', kind='stock' 即北交所股票代码表（实测 350 只）。
         """
         try:
             start = time.time()
-            df, _src = _router.route("security_codes", market=market)
+            df, _src = _router.route("security_codes", market=market, kind=kind)
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
-                return _no_data(f"no securities for market={market}")
+                return _no_data(f"no securities for market={market} kind={kind}")
 
-            if category:
+            if category and "类别" in df.columns:
                 df = df[df["类别"] == category]
 
             items = []
@@ -502,6 +552,7 @@ def register(mcp: FastMCP):
             return _ok({
                 "market": market,
                 "category": category,
+                "kind": kind,
                 "latency_ms": latency_ms,
                 "count": len(items),
                 "items": items,
@@ -530,14 +581,7 @@ def register(mcp: FastMCP):
             if df is None or df.empty:
                 return _no_data(f"no minute history for {code} on {trading_date}")
 
-            points = []
-            for _, row in df.iterrows():
-                points.append({
-                    "time": str(row.get("时间", "")),
-                    "price": float(row.get("价格", 0) or 0),
-                    "avg_price": float(row.get("均价", 0) or 0),
-                    "volume": float(row.get("成交量", 0) or 0),
-                })
+            points = _df_to_points(df)
 
             return _ok({
                 "code": _strip_prefix(code),
@@ -549,6 +593,47 @@ def register(mcp: FastMCP):
         except Exception as e:
             logger.exception("eltdx_get_minute_history failed")
             return _err(f"minute history query failed: {e}")
+
+    @mcp.tool()
+    async def eltdx_get_recent_minutes(code: str, trading_date: str = "") -> str:
+        """
+        获取股票近期历史分时数据（eltdx 独有，v3.3.30 新增）。
+
+        底层协议 0x0feb（minutes.recent），覆盖范围为服务端「近期窗口」，
+        与 eltdx_get_minute_history（0x0fb4，指定日）**不是同一接口**。
+
+        Args:
+            code: 股票代码，如 "600170"
+            trading_date: 交易日，格式 "20260813" 或 "2026-08-13"；
+                          留空则由服务端取当前日期
+
+        非交易日/超出窗口时返回 no_data（不报错）。
+        """
+        try:
+            start = time.time()
+            df, _src = _router.route(
+                "recent_minute", code=code, trading_date=trading_date
+            )
+            latency_ms = round((time.time() - start) * 1000, 1)
+
+            if df is None or df.empty:
+                return _no_data(
+                    f"no recent minute data for {code}"
+                    + (f" on {trading_date}" if trading_date else "")
+                )
+
+            points = _df_to_points(df)
+
+            return _ok({
+                "code": _strip_prefix(code),
+                "trading_date": trading_date,
+                "latency_ms": latency_ms,
+                "point_count": len(points),
+                "points": points,
+            })
+        except Exception as e:
+            logger.exception("eltdx_get_recent_minutes failed")
+            return _err(f"recent minute query failed: {e}")
 
     @mcp.tool()
     async def eltdx_get_buy_sell_strength(code: str) -> str:
@@ -662,40 +747,48 @@ def register(mcp: FastMCP):
             return _err(f"opening match query failed: {e}")
 
     @mcp.tool()
-    async def eltdx_get_full_kline(code: str, period: str = "day") -> str:
+    async def eltdx_get_full_kline(
+        code: str,
+        period: str = "day",
+        adjust: str = "",
+        max_pages: int = 200,
+        page_size: int = 800,
+    ) -> str:
         """
-        获取股票全量历史 K 线（eltdx，v3.3.7 新增）。
+        获取股票全量历史 K 线（eltdx，v3.3.7 新增；v3.3.30 支持分钟周期与复权）。
 
-        自动分页拉取全量 K 线（如日线约 6000+ 根），适合回测。
-        与 eltdx_get_kline（单页）互补。
+        自动分页拉取全量 K 线（日线约 6000+ 根），适合回测；
+        跨页结果按时间升序重排后返回。与 eltdx_get_kline（单页）互补。
 
         Args:
             code: 股票代码，如 "600170"
-            period: 周期，"day" / "week" / "month"
+            period: 周期。分钟：'1m'/'5m'/'15m'/'30m'/'60m'/'1h'；
+                    日线及以上：'day'/'week'/'month'/'quarter'/'year'
+            adjust: 复权方式，空=不复权（默认）/ 'qfq' / 'hfq'
+            max_pages: 最大页数，默认 200；传 0 表示不设上限（谨慎，可能长时间翻页）
+            page_size: 每页条数，默认 800；有效范围 100~800（小于 100 会被抬到 100，
+                       否则 6000+ 根日线要翻上千页、撞穿 max_pages 而失败）
+
+        耗时提示：1 分钟全量实测约 2.2 万根 ≈ 28 页；分钟周期建议显式传较小的 max_pages。
         """
         try:
             start = time.time()
-            df, _src = _router.route("full_kline", code=code, period=period)
+            df, _src = _router.route(
+                "full_kline", code=code, period=period, adjust=adjust,
+                max_pages=int(max_pages or 0) or None, page_size=int(page_size or 800),
+            )
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
                 return _no_data(f"no full kline for {code}")
 
-            bars = []
-            for _, row in df.iterrows():
-                bars.append({
-                    "date": str(row.get("日期", "")),
-                    "open": float(row.get("开盘", 0) or 0),
-                    "high": float(row.get("最高", 0) or 0),
-                    "low": float(row.get("最低", 0) or 0),
-                    "close": float(row.get("收盘", 0) or 0),
-                    "volume": float(row.get("成交量", 0) or 0),
-                    "amount": float(row.get("成交额", 0) or 0),
-                })
+            bars = _df_to_bars(df)
 
             return _ok({
                 "code": _strip_prefix(code),
                 "period": period,
+                "period_canonical": _canonical_period(period),
+                "adjust": adjust or "none",
                 "latency_ms": latency_ms,
                 "bar_count": len(bars),
                 "bars": bars,
@@ -705,41 +798,45 @@ def register(mcp: FastMCP):
             return _err(f"full kline query failed: {e}")
 
     @mcp.tool()
-    async def eltdx_get_adjusted_kline(code: str, period: str = "day", adjust: str = "qfq", count: int = 800) -> str:
+    async def eltdx_get_adjusted_kline(
+        code: str,
+        period: str = "day",
+        adjust: str = "qfq",
+        count: int = 800,
+        all_pages: bool = False,
+        max_pages: int = 200,
+    ) -> str:
         """
-        获取股票复权 K 线（eltdx，v3.3.7 新增）。
+        获取股票复权 K 线（eltdx，v3.3.7 新增；v3.3.30 支持分钟周期与分页）。
 
-        返回前复权(qfq)/后复权(hfq) K 线，复权因子由 eltdx 本地计算。
+        返回前复权/后复权 K 线，复权由主站计算。
 
         Args:
             code: 股票代码，如 "600170"
-            period: 周期，"day" / "week" / "month"
-            adjust: 复权方式，"qfq"（前复权，默认）/ "hfq"（后复权）
-            count: 返回根数，默认 800
+            period: 周期。分钟：'1m'/'5m'/'15m'/'30m'/'60m'/'1h'；
+                    日线及以上：'day'/'week'/'month'/'quarter'/'year'
+            adjust: 复权方式，'qfq'（前复权，默认）/ 'hfq'（后复权）
+            count: 单页返回根数（默认 800，上限 800）；all_pages=True 时忽略
+            all_pages: 是否自动翻页取全量（结果按时间升序重排）
+            max_pages: all_pages=True 时的最大页数，默认 200
         """
         try:
             start = time.time()
-            df, _src = _router.route("adjusted_kline", code=code, period=period, adjust=adjust, count=count)
+            df, _src = _router.route(
+                "adjusted_kline", code=code, period=period, adjust=adjust,
+                count=count, all_pages=bool(all_pages), max_pages=int(max_pages or 0) or None,
+            )
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
                 return _no_data(f"no adjusted kline for {code}")
 
-            bars = []
-            for _, row in df.iterrows():
-                bars.append({
-                    "date": str(row.get("日期", "")),
-                    "open": float(row.get("开盘", 0) or 0),
-                    "high": float(row.get("最高", 0) or 0),
-                    "low": float(row.get("最低", 0) or 0),
-                    "close": float(row.get("收盘", 0) or 0),
-                    "volume": float(row.get("成交量", 0) or 0),
-                    "amount": float(row.get("成交额", 0) or 0),
-                })
+            bars = _df_to_bars(df)
 
             return _ok({
                 "code": _strip_prefix(code),
                 "period": period,
+                "period_canonical": _canonical_period(period),
                 "adjust": adjust,
                 "latency_ms": latency_ms,
                 "bar_count": len(bars),

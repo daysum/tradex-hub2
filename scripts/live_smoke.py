@@ -68,7 +68,11 @@ PARAM_POOL: dict[str, Any] = {
     # 数量
     "limit": 5,
     "count": 5,
-    "page_size": 5,
+    # ⚠️ 刻意**不放** page_size：它是「每页条数」，语义敏感，不同接口的值域差别极大。
+    # v3.3.30 踩坑：fetch_full_kline 新增 page_size 形参后被本池命中（=5），
+    # 于是每页只取 5 根、6012 根要翻 1203 页，直接撞穿 max_pages=200 报
+    # 「reached max_pages」—— 看起来像代码回归，其实是夹具把参数传坏了。
+    # 需要它的类型（cninfo_announcement）在 OVERRIDES 里单独给。
     "num_results": 5,
     "top_n": 5,
     "days": 5,
@@ -103,10 +107,20 @@ OVERRIDES: dict[str, dict[str, Any]] = {
     "f10_extra": {"entry": "valuation"},
     "index_daily_amount": {"symbol": "000001", "code": "000001"},
     "minute_history": {"trading_date": "20260918"},
+    # v3.3.30 新增：近期历史分时（0x0feb）。覆盖范围是服务端「近期窗口」，
+    # 传固定历史日期可能落在窗口外 → 留空让 SDK 取当前日期。
+    "recent_minute": {"trading_date": ""},
     "tick_data": {"trading_date": "20260918"},
     "opening_match_history": {"trading_date": "20260918"},
     # akshare 的 baidu 估值接口必须给 indicator，空串会 KeyError: 'Result'
     "valuation": {"indicator": "总市值"},
+    # 巨潮公告：page_size 是真正的「每页条数」，5 条即可。
+    # v3.3.30 把 page_size 移出通用参数池（避免污染全量 K 线接口），这里显式补回。
+    "cninfo_announcement": {"page_size": 5},
+    # 全量 K 线：显式锁死 page_size = SDK 默认 800。
+    # 传小页（如通用池曾经的 5）会让 6000+ 根日线要翻上千页，撞穿 max_pages 而报错。
+    "full_kline": {"page_size": 800},
+    "adjusted_kline": {"page_size": 800},
 }
 
 # ---------------------------------------------------------------------------
@@ -200,7 +214,7 @@ AKSHARE_TRANSPORT: set[str] = {
 # ---------------------------------------------------------------------------
 # 工具层的补充参数。
 #
-# 129 个工具里有 22 个无法用通用参数池调用，分两类：
+# 130 个工具里有 22 个无法用通用参数池调用，分两类：
 #   1. 网络类但形参特殊（entry / codes / trading_date / item / indicator / query）
 #      → 补下面这些即可覆盖
 #   2. 纯计算类（calculate_* / screen_stocks / generate_trading_signal 等）
@@ -494,13 +508,18 @@ def run_tools(only: set[str] | None = None) -> list[Row]:
             detail = describe(result)
             if retries:
                 detail += f"（重试 {retries} 次后成功）"
-            # 工具层约定返回 JSON 字符串；顺带校验一下是不是合法 JSON
+            # 工具层约定返回 JSON 字符串；顺带校验合法性 + 识别 no_data
             if isinstance(result, str) and result.strip().startswith(("{", "[")):
                 try:
-                    json.loads(result)
+                    payload = json.loads(result)
                 except Exception:  # noqa: BLE001
                     status = "FAIL"
                     detail = f"返回非法 JSON: {result[:120]}"
+                else:
+                    # 工具层的统一约定：没取到数据返回 {"status": "no_data", ...}。
+                    # 它是一条合法 JSON，但**不是 OK** —— 之前会被误报成 OK。
+                    if isinstance(payload, dict) and payload.get("status") == "no_data":
+                        status = "EMPTY"
             rows.append(Row("tool", name, "", status, dt, detail))
         except Exception as e:  # noqa: BLE001
             dt = time.time() - t0

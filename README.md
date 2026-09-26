@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>AI金融智能决策中台</strong><br/>
-  AKShare 封装 · eltdx 通达信协议 · astock_signals 信号模块 · 量化计算引擎 · SmartRouter 全量路由 · 本地 MCP Server · 129 个工具
+  AKShare 封装 · eltdx 通达信协议 · astock_signals 信号模块 · 量化计算引擎 · SmartRouter 全量路由 · 本地 MCP Server · 130 个工具
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/MCP-1.0-green.svg" alt="MCP"/>
   <img src="https://img.shields.io/badge/License-Apache--2.0-yellow.svg" alt="License"/>
   <img src="https://img.shields.io/badge/Data-A股-red.svg" alt="Data Scope"/>
-  <img src="https://img.shields.io/badge/Tools-129-orange.svg" alt="MCP Tools"/>
+  <img src="https://img.shields.io/badge/Tools-130-orange.svg" alt="MCP Tools"/>
   <img src="https://img.shields.io/badge/Version-3.3.18-blue.svg" alt="Version"/>
 </p>
 
@@ -20,15 +20,15 @@
 
 为 AI Agent（WorkBuddy / Claude Code / Cursor）提供 **A 股金融数据 + 量化计算 + 决策支持的 MCP 接口**。
 
-**三层能力模型**（129 个工具）：
-- **L1 数据获取层**：通过 SmartRouter 统一获取数据（行情/财务/估值/行业/新闻/宏观/涨停板/龙虎榜/五档盘口/逐笔/分时/题材/短线指标等），其中 eltdx 通达信协议 31 个工具
+**三层能力模型**（130 个工具）：
+- **L1 数据获取层**：通过 SmartRouter 统一获取数据（行情/财务/估值/行业/新闻/宏观/涨停板/龙虎榜/五档盘口/逐笔/分时/题材/短线指标等），其中 eltdx 通达信协议 32 个工具
 - **L2 计算引擎层**（8个工具）：技术指标计算6个、绩效指标计算2个
 - **L3 决策支持层**（16个工具）：交易信号生成3个、多因子分析2个、条件选股2个、系统诊断5个、综合分析3个、技术分析引擎1个
 
 **数据源架构（v3.3.18）**：
 - **data_sources 数据源层**：78 个数据类型，102 个数据源注册（37 种源），按封禁风险分三梯队
 - **SmartRouter 全量覆盖**：L1 工具通过 `SmartRouter.route()` 统一获取数据，自动健康评分/降级/故障隔离
-- **eltdx 3.2.2**：行情类第一主源，31 个工具覆盖五档盘口/集合竞价/逐笔/F10/分时/K线/全景档案/短线指标/题材/分类行情等；新增常驻连接管理器 `eltdx_stream.py`（游标增量轮询实现准实时五档盘口）。3.x 为 Rust 重写内核（native wheel，cp310-abi3）
+- **eltdx 3.2.2**：行情类第一主源，32 个工具覆盖五档盘口/集合竞价/逐笔/F10/分时/K线/全景档案/短线指标/题材/分类行情等；新增常驻连接管理器 `eltdx_stream.py`（游标增量轮询实现准实时五档盘口）。3.x 为 Rust 重写内核（native wheel，cp310-abi3）
 - **数据源梯队**：第一梯队（eltdx/腾讯/本地 vipdoc，不封 IP）+ 第二梯队（同花顺/新浪/巨潮/财联社，低风险）+ 第三梯队（东财 push2/push2ex/slist，仅独有数据 + 限流防封）
 - **数据源看板**：`python -m tradex.dashboard`（端口 8765），可视化查看数据源健康/路由/工具分布；MCP 工具 `get_data_source_dashboard` 可在 Agent 对话中查询
 
@@ -44,7 +44,7 @@
 
 > **数据源优先级**：第一梯队（eltdx/腾讯/本地，不封 IP）优先用，第二梯队（同花顺/新浪/巨潮）低风险，第三梯队（东财）仅用于独有数据 + 限流防封（间隔 ≥1s + 随机抖动）。
 
-## MCP 工具清单（129 个）
+## MCP 工具清单（130 个）
 
 ### 1. 公司信息（4 个）— `company_info`
 
@@ -173,15 +173,16 @@
 | 工具名 | 功能 |
 |--------|------|
 | `eltdx_get_minutes` | 当日分时 |
-| `eltdx_get_minute_history` | 历史分时（盘后复盘） |
+| `eltdx_get_minute_history` | 历史分时（指定日 0x0fb4，约 240 点/日） |
+| `eltdx_get_recent_minutes` | 近期历史分时（0x0feb，覆盖范围以服务端窗口为准） |
 | `eltdx_get_buy_sell_strength` | 买卖强度（日内强弱） |
 
 **K 线**：
 | 工具名 | 功能 |
 |--------|------|
-| `eltdx_get_kline` | K线（日/周/月/分钟） |
-| `eltdx_get_full_kline` | 全量K线（回测） |
-| `eltdx_get_adjusted_kline` | 复权K线（qfq/hfq） |
+| `eltdx_get_kline` | K线单页（分钟 1m/5m/15m/30m/60m + 日/周/月/季/年；count ≤ 800） |
+| `eltdx_get_full_kline` | 全量K线（自动分页+升序重排，支持 adjust / max_pages，适合回测） |
+| `eltdx_get_adjusted_kline` | 复权K线（qfq/hfq，支持分钟周期与 all_pages 分页） |
 
 **F10/基本面**：
 | 工具名 | 功能 |
@@ -201,7 +202,7 @@
 |--------|------|
 | `eltdx_get_stock_topics` | 个股关联题材 |
 | `eltdx_get_topic_stocks` | 题材成分股排名 |
-| `eltdx_get_security_codes` | 全市场证券代码表 |
+| `eltdx_get_security_codes` | 全市场证券代码表（`kind` 可指定 stock/a_share/etf/index/st/suspended） |
 | `eltdx_get_category_quotes` | 分类行情（涨幅榜/成交额榜） |
 | `eltdx_get_trading_day` | 交易日判定 |
 | `eltdx_get_special_limits` | 特殊品种涨跌停参考价 |
@@ -352,7 +353,7 @@ python -m tradex --http --allowed-hosts '*'    # 仅可信内网：关闭 Host �
 |------|------|------|
 | `POST /mcp` | **Streamable HTTP** | MCP 2025 新标准传输，Dify / LangChain / Claude 远程客户端首选 |
 | `GET /sse` + `POST /messages/` | legacy SSE | 旧客户端兼容（MCP 官方已标 deprecated，保留过渡） |
-| `GET /health` | HTTP | 健康检查：`{"status":"ok","service":"tradex-mcp","version":"3.3.18","tools":129}`，轻量探活不触发数据源网络 |
+| `GET /health` | HTTP | 健康检查：`{"status":"ok","service":"tradex-mcp","version":"3.3.30","tools":130}`，轻量探活不触发数据源网络 |
 
 **Dify / LangChain 配置示例**（Streamable HTTP）：
 
@@ -417,6 +418,7 @@ AI 会调用 `mcp__tradex__eltdx_get_kline`，返回 100 根日 K 线。
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+| v3.3.30 | 2026-09-26 | **分钟 K 线全线打通 + 消灭两个「静默错数据」缺陷**。① **`period="5m"` 静默返回日线（P0）**：eltdx 拒绝分钟周期 → 降级 akshare → 东财参数 `_EM_KLT.get(period,"101")` 落默认值 101=**日K**，调用方拿到 1498 根日线且**零告警**；修法两处缺一不可 —— 主源 `_normalize_period` 支持分钟 + 备源新增 `_norm_klt()` 未识别周期**直接抛错**（并把分钟 klt `1/5/15/30/60` 补全，东财原生支持分钟）。② **`period="1m"` 返回月线（P0）**：两个源别名表都写 `"1m": "month"`，而 `full_kline` 不归一化 → 同一参数名在两个工具语义相反。③ **BREAKING**：`1m` 统一改为「1 分钟」（对齐 eltdx 官方口径），月线改用 `1mo`/`month`，短别名 `m` 仍兼容月线。④ `adjusted_kline` 分钟复权硬失败（独占源无备源）→ 放开。⑤ `full_kline` `max_pages` 默认 30 过紧（1 分钟全量约 28 页）→ 放宽到 200 并暴露 `adjust`/`page_size`。⑥ 新增 `eltdx_get_security_codes` 的 `kind`（stock/a_share/etf/index/st/suspended，实测北交所股票 350 只 vs 全品种 385 条）与 `eltdx_get_recent_minutes`（0x0feb）。工具 129→130，数据源 102→103，数据类型 78→79。新增 105 条测试；tradex/tests 146 passed、仓库 tests 729 passed |
 | v3.3.29 | 2026-09-20 | **修复 `board_industry_hist_em`（行业历史行情）—— `industry_data` 7 个 endpoint 至此全部有可用源，B 组清零**。东财板块日K路由整条链路故障（所有 `push2his*` 连接被拒；`push2delay` 认得出板块但 `klines` 为空），akshare 主源 + ths 备源都不覆盖 → **换数据来源**：实测**同花顺板块K线免鉴权可用**（`d.10jqka.com.cn/v6/line/bk_{code}/{seg}/last.js`，`01`=日K/`11`=周K/`21`=月K，行业代码 `881xxx`）。实现放在 `ths_fetchers`（10jqka 传输归它管）。降级顺序刻意「**同花顺优先 → 东财兜底**」：东财放前面会先跑昂贵的 BK 解析再失败（首调 **24s** 超时），同花顺 **1.5s**。新增 22 条测试，测试 770 passed |
 | v3.3.28 | 2026-09-20 | **修复 `board_industry_cons_em`（行业板块成分股）**，`get_industry_stocks` / `get_competitors` 从恒失败变为正常。此前该 endpoint **两个源都不覆盖**（akshare 打 `29.push2` 被拒连 + ths 明确不支持）→ 改本项目直连（`push2delay` 的 clist 经 `em_get` 走镜像可取到）。排查中揪出 **akshare 原版两个隐藏缺陷**：① **只搜行业板块、漏了概念板块** —— `白酒`/`新能源车` 只存在于概念板块，而调用方 docstring 明确把它们列为合法输入；② **板块列表只取第一页** —— 服务端把 `pz` 硬顶在 100，而行业 496 / 概念 504 个，靠后的名字被误判为不存在。本实现两类板块都检索 + 翻页 + **可断点续取的缓存**（首次 ~10s → 之后 ~1.1s）；字段改**按名映射**（akshare 按位置依赖响应 key 顺序 + `reset_index` 插入列）。路由超时单独放宽 40s（与 `fund_hold` 做法一致）。新增 16 条测试，测试 748 passed |
 | v3.3.27 | 2026-09-20 | **修复 `historical_kline` 备源**，改为本项目直连两层降级：① 东财 `push2his` kline（走 `em_get`，原生复权/振幅）；② **腾讯 `proxy.finance.qq.com` 兜底**。**为什么必须加第②层**：实测东财日K路由**整体不可用** —— `push2his` 连接被拒（10/10），`push2delay` 该路径 `rc=0` 但 `klines` 为空（只服务分时）；只把 akshare 换成直连东财**仍取不到数**，腾讯兜底才是今天就能工作的关键。字段语义已用主源 `eltdx` **逐字段交叉验证**（腾讯 bar `[1]`开`[2]`收`[3]`高`[4]`低`[5]`量`[7]`换手率`[8]`成交额(**万元**)，与 eltdx 完全吻合）；振幅/涨跌幅/涨跌额腾讯不提供，按前收自算。另显式校验 kline 字段个数，避免「少一列→整体错位」（v3.3.16 同类事故）。输出列与 akshare 完全一致。新增 27 条测试，测试 732 passed |

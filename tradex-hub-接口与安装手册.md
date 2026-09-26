@@ -1,6 +1,6 @@
 # tradex-hub 接口与安装手册
 
-> **版本**：v3.3.29 ｜ **接口总数**：129 个 MCP 工具 ｜ **数据范围**：A 股 + 全球指数/美股/外汇 + 宏观
+> **版本**：v3.3.30 ｜ **接口总数**：130 个 MCP 工具 ｜ **数据范围**：A 股 + 全球指数/美股/外汇 + 宏观
 > **仓库**：https://github.com/wolfjkd/tradex-hub ｜ **许可**：Apache-2.0 ｜ **作者**：郭良勇 (wolfjkd)
 > **文档生成**：2026-09-18，接口清单由源码 AST 自动提取（`tools/` 目录 23 个模块）
 
@@ -13,7 +13,7 @@
 - [三、运行与接入 AI Agent](#三运行与接入-ai-agent)
 - [四、字段与数据约定](#四字段与数据约定)
 - [五、接口函数总览](#五接口函数总览)
-- [六、接口详细说明（129 个）](#六接口详细说明129-个)
+- [六、接口详细说明（130 个）](#六接口详细说明130-个)
 - [七、环境变量参考](#七环境变量参考)
 - [八、故障排查](#八故障排查)
 - [附录 A：工具统计](#附录-a工具统计)
@@ -24,20 +24,20 @@
 
 tradex-hub 是一个面向 AI Agent（WorkBuddy / Claude Code / Cursor / Dify / LangChain）的
 **A 股金融数据 + 量化计算 + 决策支持 MCP Server**，基于 AKShare、eltdx 通达信协议、
-astock_signals 信号模块构建，提供 **129 个 MCP 工具**。
+astock_signals 信号模块构建，提供 **130 个 MCP 工具**。
 
 ### 1.1 三层能力模型
 
 | 层级 | 能力 | 工具数 | 说明 |
 |------|------|--------|------|
-| **L1 数据获取层** | 行情 / 财务 / 估值 / 行业 / 新闻 / 宏观 / 涨停板 / 龙虎榜 / 五档盘口 / 逐笔 / 分时 / 题材 / 短线指标 | 105 | 通过 `SmartRouter` 统一获取，自动健康评分 / 降级 / 故障隔离 |
+| **L1 数据获取层** | 行情 / 财务 / 估值 / 行业 / 新闻 / 宏观 / 涨停板 / 龙虎榜 / 五档盘口 / 逐笔 / 分时 / 题材 / 短线指标 | 106 | 通过 `SmartRouter` 统一获取，自动健康评分 / 降级 / 故障隔离 |
 | **L2 计算引擎层** | 技术指标计算 6 个、绩效指标计算 2 个 | 8 | 纯函数实现，结果与 Excel / 通达信一致 |
 | **L3 决策支持层** | 交易信号 3、多因子 2、条件选股 2、系统诊断 5、综合分析 3、技术分析引擎 1 | 16 | 组合调用 L1+L2，输出可执行结论 |
-| | | **129** | |
+| | | **130** | |
 
 ### 1.2 数据源架构
 
-- **data_sources 数据源层**：78 个数据类型、102 个数据源注册（37 种源），按封禁风险分三梯队
+- **data_sources 数据源层**：79 个数据类型、103 个数据源注册（37 种源），按封禁风险分三梯队
 - **SmartRouter 全量覆盖**：L1 工具通过 `SmartRouter.route()` 统一取数，自动健康评分 / 降级 / 故障隔离
 - **数据源梯队**：
   - 第一梯队（不封 IP）：`eltdx` 通达信 / 腾讯 / 本地 vipdoc
@@ -56,7 +56,7 @@ astock_signals 信号模块构建，提供 **129 个 MCP 工具**。
   `None` 让调用方走备源。按 **主机+路径** 计，不误伤同主机上健康的路径。
 - **`em_post()` 统一 POST 入口（v3.3.24）**：与 `em_get` 共用节流 / 重试 / 镜像 / 熔断，
   避免 POST 类接口（如 emappdata 人气榜）成为绕过防封层的后门。
-- **eltdx 3.2.2**：行情类第一主源，31 个工具；3.x 为 Rust 重写内核（native wheel，cp310-abi3）
+- **eltdx 3.2.2**：行情类第一主源，32 个工具；3.x 为 Rust 重写内核（native wheel，cp310-abi3）
 - **数据源看板**：`python -m tradex.dashboard`（端口 8765），也可通过 MCP 工具 `get_data_source_dashboard` 查询
 
 > **网络边界铁律**：数据源流量（AKShare / eltdx / 东财等）**永远直连**，import 时已清代理环境变量；
@@ -72,7 +72,7 @@ tradex-hub/
 │   │   ├── __main__.py          # 入口：stdio / --http
 │   │   ├── http_server.py       # HTTP 网关（/mcp + /sse + /health）
 │   │   ├── config.py            # 环境变量配置中心
-│   │   ├── tools/               # ★ 23 个工具模块（129 个接口）
+│   │   ├── tools/               # ★ 23 个工具模块（130 个接口）
 │   │   ├── data_sources/        # 数据源层 + SmartRouter 注册表
 │   │   ├── utils/               # symbol / formatter / cache 等
 │   │   └── dashboard/           # 数据源看板（端口 8765）
@@ -232,7 +232,7 @@ python -m tradex --http --allowed-hosts '*'                # 仅可信内网：�
 |------|------|------|
 | `POST /mcp` | Streamable HTTP | MCP 2025 新标准，Dify / LangChain / Claude 远程客户端首选 |
 | `GET /sse` + `POST /messages/` | legacy SSE | 旧客户端兼容（MCP 官方已标 deprecated）|
-| `GET /health` | HTTP | `{"status":"ok","service":"tradex-mcp","version":"3.3.29","tools":129}`，轻量探活不触发数据源 |
+| `GET /health` | HTTP | `{"status":"ok","service":"tradex-mcp","version":"3.3.30","tools":130}`，轻量探活不触发数据源 |
 
 **Dify / LangChain 配置**：URL 填 `http://<服务器IP或域名>:8000/mcp`，类型选 `streamable-http`
 （旧端点则用 `http://<服务器IP或域名>:8000/sse`）。
@@ -385,7 +385,7 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 11 | A股信号·ETF | `signal_data_etf.py` | 2 | `get_etf_realtime_data`、`get_etf_kline_data` |
 | 12 | A股信号·可转债 | `signal_data_cb.py` | 2 | `get_cb_realtime_data`、`get_cb_value_analysis_data` |
 | 13 | A股信号·涨停板 | `signal_data_board.py` | 3 | `get_limit_up_board`、`get_board_sentiment`、`get_limit_up_insight` |
-| 14 | eltdx 通达信协议 | `eltdx_data.py` | 31 | 见 [14 节](#14-eltdx-通达信协议31-个) |
+| 14 | eltdx 通达信协议 | `eltdx_data.py` | 32 | 见 [14 节](#14-eltdx-通达信协议32-个) |
 | 15 | 技术指标计算（L2）| `technical_indicators.py` | 6 | `calculate_ma_ema`、`calculate_macd`、`calculate_kdj`、`calculate_rsi`、`calculate_boll`、`calculate_atr` |
 | 16 | 绩效指标计算（L2）| `performance_metrics.py` | 2 | `calculate_performance`、`list_performance_metrics` |
 | 17 | 信号生成（L3）| `signal_generation.py` | 3 | `generate_trading_signal`、`scan_stocks_for_signals`、`validate_signal_quality` |
@@ -395,14 +395,14 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 21 | 技术分析引擎（L3）| `analysis_engine.py` | 1 | `analyze_technical` |
 | 22 | 系统诊断 | `diagnostics.py` | 5 | `get_data_source_health`、`list_all_tools`、`get_cache_stats`、`health_check`、`get_data_source_dashboard` |
 | 23 | 本地数据 | `local_data.py` | 2 | `get_local_kline`、`get_local_minute` |
-| | | | **129** | |
+| | | | **130** | |
 
 > 上表与第六节清单**以源码为准**自动生成。README 部分小节（如"市场总览 5 个"、
 > "新闻公告 4 个"）为历史版本口径，实际工具数已随后续版本扩充。
 
 ---
 
-## 六、接口详细说明（129 个）
+## 六、接口详细说明（130 个）
 
 > 参数表中"必填"依据函数签名是否有默认值判定；`—` 表示无默认值（必填）。
 
@@ -1320,7 +1320,7 @@ _无入参。_
 
 **返回**：涨停揭秘数据 (JSON)，含题材原因/封板成功率/板型/封单额/换手率。
 
-### 14. eltdx 通达信协议（31 个）
+### 14. eltdx 通达信协议（32 个）
 
 > 源码模块：`tradex/src/tradex/tools/eltdx_data.py`
 
@@ -1371,13 +1371,21 @@ _无入参。_
 
 获取股票 K 线数据（SmartRouter 路由，优先 eltdx 数据源）。
 
-支持日/周/月/分钟等多种周期。
+支持分钟/日/周/月/季/年周期。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `code` | string | **是** | — | 股票代码，如 "000001" |
-| `period` | string | 否 | `"day"` | 周期，"day" / "week" / "month" / "5m" / "15m" / "30m" / "60m" |
-| `count` | integer | 否 | `100` | 返回 K 线根数（默认 100）|
+| `period` | string | 否 | `"day"` | 周期。分钟：`1m`/`1min`/`5m`/`15m`/`30m`/`60m`/`1h`；日线及以上：`day`/`daily`/`d`、`week`/`w`、`month`/`monthly`/`1mo`、`quarter`/`q`、`year`/`y` |
+| `count` | integer | 否 | `100` | 返回 K 线根数，**单页上限 800**；需要更多请用 `eltdx_get_full_kline` |
+
+> ⚠️ **`period="1m"` 表示 1 分钟**（v3.3.30 起，对齐 eltdx 官方口径）。
+> 月线请用 `month` 或 `1mo`。旧写法 `m`（=月线）仍兼容但不推荐。
+>
+> ⚠️ v3.3.30 之前，`5m`/`15m`/`30m`/`60m` 会**静默降级并返回日线**
+> （主源拒绝分钟周期 → 备源参数落默认日K），`1m` 会返回**月线**。升级后已修复。
+
+返回体含 `period_canonical`（归一化后的周期名），可用于核对没有发生静默换周期。
 
 #### `eltdx_get_depth`
 
@@ -1410,19 +1418,39 @@ _无入参。_
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `market` | string | 否 | `"all"` | 市场，'sh' / 'sz' / 'bj' / 'all'（默认 all，沪深京三市场）|
-| `category` | string | 否 | `""` | 类别过滤，如 'a_share'（A股）、'etf'、'index'，空则不过滤 |
+| `category` | string | 否 | `""` | 类别后置过滤，如 'a_share'（A股）、'etf'、'index'，空则不过滤 |
+| `kind` | string | 否 | `""` | **v3.3.30 新增**。品种快捷（下推到数据源，比 `category` 更省流量）：`stock`（A+B 股）/ `a_share` / `etf` / `index` / `st`（ST 名单）/ `suspended`（停牌名单，返回仅含代码列）|
+
+> 示例：`market="bj", kind="stock"` → 北交所股票代码表（实测 350 只）。
+> 不带 `kind` 的 `market="bj"` 会返回**全部品种**（实测 385 条，含指数/ETF/债券），
+> 需要自己按 `category` 过滤。
 
 #### `eltdx_get_minute_history`
 
 获取股票历史分时数据（eltdx 独有，v3.3.7 新增）。
 
 返回指定交易日的历史分时（约 240 点/日），用于盘后复盘。
-这是 eltdx 独有能力（历史分时 AKShare 需付费）。
+这是 eltdx 独有能力（历史分时 AKShare 需付费）。底层协议 `0x0fb4`。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `code` | string | **是** | — | 股票代码，如 "600170" |
 | `trading_date` | string | **是** | — | 交易日，格式 "20260813" 或 "2026-08-13" |
+
+#### `eltdx_get_recent_minutes`
+
+获取股票**近期**历史分时数据（eltdx 独有，**v3.3.30 新增**）。
+
+底层协议 `0x0feb`（`client.minutes.recent`），覆盖范围为服务端「近期窗口」。
+与 `eltdx_get_minute_history`（`0x0fb4`，指定日）**不是同一接口**，
+覆盖范围不同，不可互相替代。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `code` | string | **是** | — | 股票代码，如 "600170" |
+| `trading_date` | string | 否 | `""` | 近期窗口内的交易日，格式 "20260813" 或 "2026-08-13"；留空则由服务端取当前日期 |
+
+> 非交易日/超出窗口时返回 `status="no_data"`（不报错）。
 
 #### `eltdx_get_buy_sell_strength`
 
@@ -1460,28 +1488,44 @@ _无入参。_
 
 #### `eltdx_get_full_kline`
 
-获取股票全量历史 K 线（eltdx，v3.3.7 新增）。
+获取股票全量历史 K 线（eltdx，v3.3.7 新增；v3.3.30 支持分钟周期与复权）。
 
-自动分页拉取全量 K 线（如日线约 6000+ 根），适合回测。
-与 eltdx_get_kline（单页）互补。
+自动分页拉取全量 K 线（日线约 6000+ 根），适合回测；
+跨页结果按时间升序重排后返回。与 eltdx_get_kline（单页）互补。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `code` | string | **是** | — | 股票代码，如 "600170" |
-| `period` | string | 否 | `"day"` | 周期，"day" / "week" / "month" |
+| `period` | string | 否 | `"day"` | 周期，同 `eltdx_get_kline`（分钟 + 日/周/月/季/年）|
+| `adjust` | string | 否 | `""` | **v3.3.30 新增**。复权方式，空=不复权 / `qfq` / `hfq` |
+| `max_pages` | integer | 否 | `200` | **v3.3.30 新增**。最大页数；传 `0` 表示不设上限（谨慎）|
+| `page_size` | integer | 否 | `800` | **v3.3.30 新增**。每页条数（上限 800）|
+
+> 耗时提示：1 分钟全量实测约 **2.2 万根 ≈ 28 页**（每页 800）。
+> 分钟周期建议显式传较小的 `max_pages` 控制单次耗时。
+>
+> 注意 SDK 语义：达到 `max_pages` 仍未出现空页时会抛
+> `RuntimeError: bars.get reached max_pages`（**不静默截断**，这是有意设计）。
 
 #### `eltdx_get_adjusted_kline`
 
-获取股票复权 K 线（eltdx，v3.3.7 新增）。
+获取股票复权 K 线（eltdx，v3.3.7 新增；v3.3.30 支持分钟周期与分页）。
 
-返回前复权(qfq)/后复权(hfq) K 线，复权因子由 eltdx 本地计算。
+返回前复权/后复权 K 线，复权由主站计算。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `code` | string | **是** | — | 股票代码，如 "600170" |
-| `period` | string | 否 | `"day"` | 周期，"day" / "week" / "month" |
-| `adjust` | string | 否 | `"qfq"` | 复权方式，"qfq"（前复权，默认）/ "hfq"（后复权）|
-| `count` | integer | 否 | `800` | 返回根数，默认 800 |
+| `period` | string | 否 | `"day"` | 周期，同 `eltdx_get_kline`（**分钟周期自 v3.3.30 起可用**）|
+| `adjust` | string | 否 | `"qfq"` | 复权方式，`qfq`（前复权，默认）/ `hfq`（后复权）|
+| `count` | integer | 否 | `800` | 单页返回根数，默认 800，上限 800；`all_pages=true` 时忽略 |
+| `all_pages` | boolean | 否 | `false` | **v3.3.30 新增**。是否自动翻页取全量（结果按时间升序重排）|
+| `max_pages` | integer | 否 | `200` | **v3.3.30 新增**。`all_pages=true` 时的最大页数 |
+
+> 修复背景：该路由是 eltdx **独占源**，无备源可降级。v3.3.30 之前
+> `period="5m"` 会被周期归一化直接拒绝，抛
+> `RuntimeError: unsupported period: '5m'`。实测 eltdx 3.2.2
+> `bars.get(period="5m", adjust="qfq")` 底层完全可用，此前只是被参数校验挡住。
 
 #### `eltdx_get_stock_profile`
 
@@ -2393,13 +2437,13 @@ _无入参。_
 | L1 数据获取层 | 105 | 81.4% |
 | L2 计算引擎层 | 8 | 6.2% |
 | L3 决策支持层 | 16 | 12.4% |
-| **合计** | **129** | **100%** |
+| **合计** | **130** | **100%** |
 
 ### A.2 按源码模块
 
 | 模块 | 工具数 | 模块 | 工具数 |
 |------|--------|------|--------|
-| `eltdx_data.py` | 31 | `macro_fx.py` | 8 |
+| `eltdx_data.py` | 32 | `macro_fx.py` | 8 |
 | `news_events.py` | 14 | `market.py` | 7 |
 | `financial_stmt.py` | 8 | `technical_indicators.py` | 6 |
 | `signal_data_base.py` | 6 | `price_data.py` | 5 |
@@ -2462,7 +2506,7 @@ python scripts/live_smoke.py --out report.md      # 输出 Markdown 报告
 |----|------|------|
 | 〇 | 数据源主机连通性 | 分辨「上游挂了」与「自己改坏了」 |
 | 一 | **每个已注册 fetcher**（102 个） | 逐个直打，含所有备源（不只主源） |
-| 二 | **每个 MCP 工具**（129 个） | 调用底层函数，校验返回结构 |
+| 二 | **每个 MCP 工具**（130 个） | 调用底层函数，校验返回结构 |
 
 状态分级（**只有 `FAIL` 算回归**，退出码才非 0）：
 

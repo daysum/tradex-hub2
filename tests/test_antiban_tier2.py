@@ -583,11 +583,17 @@ class TestWencaiConvergence:
         assert df.iloc[0]["标题"] == "研报"
 
     def test_wencai_still_requires_api_key(self, monkeypatch):
+        """缺 key 时必须显式抛错，而不是静默返回空表。
+
+        v3.3.x 之前这里断言 `df.empty`——那正是「鉴权失败被伪装成没有
+        数据」的根因；改为断言抛错后，失败才会经工具层
+        error_response 暴露给调用方。
+        """
         from tradex.data_sources import wencai_fetchers
 
         monkeypatch.setattr(wencai_fetchers, "IWENCAI_API_KEY", "")
-        df = wencai_fetchers.fetch_wencai_news(keyword="茅台")
-        assert df.empty
+        with pytest.raises(RuntimeError, match="IWENCAI_API_KEY 未设置"):
+            wencai_fetchers.fetch_wencai_news(keyword="茅台")
 
 
 class TestAkshareProfitForecastConvergence:

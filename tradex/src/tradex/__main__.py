@@ -106,8 +106,13 @@ def main():
     )
     args = parser.parse_args()
 
-    from .server import mcp
+    # 注意：config 必须先于 server 导入。
+    # config 在导入时执行 load_dotenv()，而 server 的导入链会提前加载
+    # data_sources.wencai_fetchers 等模块——这些模块在导入时就把
+    # IWENCAI_API_KEY 等 .env 变量读成模块级常量并冻结。
+    # 若顺序颠倒，.env 中的 IWENCAI_API_KEY 将永远为空。
     from .config import config
+    from .server import mcp
     from .http_server import parse_allowed_hosts
 
     # 可选：启动 WebSocket 推送服务（WS_SERVER_ENABLED=true 时启用）

@@ -17,14 +17,25 @@
 | `UPSTREAM` | 上游节点故障或第三方库自身问题 | ⚠️ 需评估 |
 | `AKSHARE` | akshare 自身传输层被上游拒连 | ⚠️ 需评估 |
 
-**当前状态快照**（2026-09-20，102 个已注册源）：
-**`FAIL` = 0** ｜ `AKSHARE` = 2 ｜ `UPSTREAM` = 3 ｜ `ENV` = 4 ｜ 其余 93 个取到数据
-（`AKSHARE` 2 项 = `industry_data` 的 akshare 行；`live_smoke.py` 的 endpoint 扫描「无可用源组合」**清单已清零**。）
+**当前状态快照**（2026-09-26，v3.3.30 全量真实冒烟，115 个源/组合项）：
+**取到数据 98** ｜ `FAIL` = 2 ｜ `EMPTY` = 1 ｜ `ENV` = 2 ｜ `UPSTREAM` = 3 ｜ `AKSHARE` = 6 ｜ `UNSUPPORTED` = 3
 
-> `AKSHARE` 残留的 2 项（`industry_data` 的 `board_industry_name_em` /
-> `board_concept_name_em`）**只是该源的冗余条目** —— 这两个 endpoint 已由 ths 备源
-> 覆盖；加上 v3.3.28（成分股）与 v3.3.29（历史行情）后，
-> `industry_data` 的 **7 个 endpoint 全部有可用源**。
+其中 `FAIL` 2 项**均为上游故障，非代码回归**（已逐个复核，本次改动未触碰相关模块）：
+- **`industry_quotes [em_push2]`** —— 东财 `push2` / `push2delay` / `push2his`
+  **三台主机同时拒连**（`Connection closed abruptly`），镜像全挂 → 无源可降级。
+  注意其中 `push2delay` / `push2his` 是**在本次冒烟期间新挂的**（数小时前仍是 HTTP 200）。
+- **`xueqiu_hot [akshare_xueqiu_hot]`** —— 雪球接口返回非 JSON（反爬），
+  **但备源 `ths_hot` 正常**（100 行 / 0.23s），工具层 `get_xueqiu_hot` 返回数据正常。
+
+`EMPTY` 1 项 = `recent_minute [eltdx]` —— 上游 `0x0feb` 不返回数据，**属预期**（见 I 组）。
+
+> 口径说明：v3.3.30 报告中 `industry_data` 已按 **7 个 endpoint 展开**
+> （`industry_data[board_industry_name_em]` 等），故总项数由 102 增至 115；
+> `AKSHARE` 计数随之上升，**不代表 akshare 传输层变差**。
+
+> v3.3.28（行业成分股）+ v3.3.29（行业历史行情）之后，
+> `industry_data` 的 **7 个 endpoint 全部有可用源**（`industry_data` 的
+> 「无可用源组合」清单中，仅剩 `ths` 明确不支持 3 个 endpoint 的 `UNSUPPORTED` 记录）。
 
 > ⚠️ 经验：**「类型级」数字会误导**。多 endpoint 类型必须下钻到
 > `(类型, endpoint)` 粒度验证 —— `industry_data` 曾出现「类型级 OK 但 2 个 endpoint
@@ -241,8 +252,31 @@ https://push2.eastmoney.com/api/qt/ulist.np/get
 |---------|----|------|
 | `local_kline` | `tdx_local` | 本机通达信 vipdoc 数据目录（`tdxdir`）|
 | `local_minute` | `tdx_local` | 同上 |
-| `wencai_news` | `iwencai_openapi` | 环境变量 `IWENCAI_API_KEY` |
-| `wencai_query` | `pywencai` | `pywencai` 依赖 + 网络 |
+| `wencai_query` | `pywencai` | `pywencai` + Node.js + **未被问财封禁的出口 IP**（见下）|
+
+> ⚠️ **`wencai_query`（pywencai）本机不可用的根因是出口 IP 被封，不是代码问题。**
+>
+> 2026-09-22 实测：本机出口 IP `120.230.123.119` 访问 `www.iwencai.com` 被**整体拒绝** ——
+> **连首页都 403**（`Nginx forbidden. request info: 120.230.123.119`），
+> 业务接口 `.../customized/chart/get-robot-data` 同样 403（openresty）。
+>
+> 已排除：换 `https` 无效、换 Chrome UA 无效 → 与协议、与指纹均无关，是 **IP 层封禁**。
+>
+> 佐证：**同一台机器**访问付费网关 `openapi.iwencai.com` 完全正常（见 G 组）——
+> 说明只有 `www.iwencai.com` 这个域被墙，不是整机出网故障。
+>
+> **结论：给 pywencai 配任何 API Key 都无效 —— pywencai 根本不使用 Key，它是爬虫库**
+> （靠 PyExecJS 调 Node.js 生成 `hexin-v` 指纹）。恢复条件只有两个：
+> 问财解封该 IP，或更换出口网络。注意项目铁律：**数据源流量禁止走代理**
+> （见 `tradex/src/tradex/config.py` 顶部注释），所以"挂个代理"不是可接受的方案。
+>
+> 另：`pywencai` 内部的 `while_do` 会吞掉异常并返回 `None`，外层再抛
+> `AttributeError: 'NoneType' object has no attribute 'get'`。本项目侧已做两处处理：
+> 把该异常翻译成可定位提示；并把重试次数从默认 10 压到 2 —— 默认 10 次 × 每次拉起
+> Node.js 必然超过 SmartRouter 的 12s 路由超时，只会暴露成无信息量的 `timeout(12.0s)`，
+> 把真实原因（403）整个盖掉。
+
+> 注：`wencai_news` 原先列在本组，2026-09-22 已修好并实测可用，见 F 组。
 
 ---
 
@@ -250,6 +284,8 @@ https://push2.eastmoney.com/api/qt/ulist.np/get
 
 | 日期 | 项 | 修复 |
 |------|----|------|
+| 2026-09-26 | `get_local_kline` / `get_local_minute` 返回**非法 JSON** | v3.3.30：两处均写作 `dict_to_json(info) + "\n" + df_to_json(df)`，把 `{...}`（元信息）与 `[...]`（数据行）用换行拼成一个字符串 → **不是合法 JSON**。此前本机读不到通达信 vipdoc 时恒走 `error_response` 分支故未暴露；本轮本机有数据后由 `live_smoke` 判出。改为单对象 `dict_to_json({**info, "data": json.loads(df_to_json(df))})`，并新增 `tests/test_local_data_json.py` 守卫 |
+| 2026-09-22 | `wencai_news` / `iwencai_openapi` 恒返回空表（**四个缺陷叠加，缺一不可用**） | 全在 `data_sources/wencai_fetchers.py`：① **缺 `X-Claw-*` 网关请求头** → `401 当前 Skill 版本过低`；② `app_id` 误写 `tradex`（该字段是**固定值 `AIME_SKILL`**）→ 被 Sentinel 流控挡成 `200 + status_code=4 FlowException + total=0`，现象酷似限流；③ 按 `result["data"]["items"]` 解析，但 `data` 实为**数组** → `AttributeError`；④ 读不存在的 `item["source"]` → 「来源」列恒为空串（真实来源在 `extra` 的 dict 内）。另：把 `status_code != 0` 纳入显式抛错（否则 FlowException 会被当成"零命中"静默返回空表）；`发布时间` 改取可读的 `publish_date`（原 `publish_time` 是 unix 秒字符串）。契约与复现命令见 **G 组** |
 | 2026-09-20 | `board_industry_hist_em`（行业历史行情）无可用源 | v3.3.29 **换数据来源**：东财板块日K路由整条链路故障 → 改用**同花顺板块K线**（`d.10jqka.com.cn/v6/line/bk_{code}/{seg}/last.js`，免鉴权，`01`日/`11`周/`21`月）。降级顺序「同花顺优先 → 东财兜底」（东财优先会先跑昂贵的 BK 解析再失败，首调 24s → 1.5s）。`get_industry_pe` 恢复 |
 | 2026-09-20 | `board_industry_cons_em`（行业成分股）无可用源 | v3.3.28 改本项目直连（`push2delay` 的 clist 经 `em_get` 走镜像）。**并修掉 akshare 原版两个隐藏缺陷**：只搜行业板块漏了概念板块（`白酒`只存在于概念）、板块列表只取第一页（`pz` 硬顶 100）。`get_industry_stocks` / `get_competitors` 恢复 |
 | 2026-09-20 | `historical_kline` 备源恒失败 | v3.3.27 改本项目直连两层：① 东财 `push2his` kline（走 `em_get`）② **腾讯 `proxy.finance.qq.com` 兜底**。**注意**：东财日K路由**整体不可用**（`push2his` 连接被拒、`push2delay` 该路径 `klines` 为空），只换直连东财仍取不到数，腾讯兜底是关键。字段已用主源 eltdx 逐字段交叉验证 |
@@ -265,15 +301,200 @@ https://push2.eastmoney.com/api/qt/ulist.np/get
 
 ---
 
+## G. 问财 OpenAPI 网关契约（**必须遵守**）
+
+**状态**：✅ 已于 2026-09-22 修入 `wencai_news`（见 F 组）。
+本节保留，因为它记录了两条**极易误判**的约束 —— **症状的措辞与真实成因完全对不上**，
+不写下来每个新人都要重排一遍。
+
+### G-1 两个症状，两个成因（都与 key 无关）
+
+| 症状 | 真实成因 | 与之**无关**的东西 |
+|------|---------|-------------------|
+| `HTTP 401`<br>`当前 Skill 版本过低，本次请求无法执行。请前往[问财 SkillHub](https://www.iwencai.com/skillhub)下载最新版本后重试。` | **缺 `X-Claw-*` 请求头** | ❌ key 是否有效<br>❌ Skill 是否真的"旧"<br>❌ 换 key（无用） |
+| `HTTP 200` + `status_code: 4`<br>`status_msg: com.alibaba.csp.sentinel.slots.block.flow.FlowException`<br>`total: 0` | 请求体 `app_id` **不是固定值 `AIME_SKILL`** | ❌ 限流<br>❌ 配额用尽<br>❌ 退避重试（无用） |
+
+**隔离实验**（同一个 key，每次只动一个变量）：
+
+| `X-Claw-*` | `app_id` | 结果 |
+|-----------|----------|------|
+| ✅ 带 | `AIME_SKILL` | ✅ `200` / `status_code=0` / `status_msg=OK`，正常返回数据 |
+| ✅ 带 | `tradex` | ❌ `200` / `status_code=4` FlowException / `total=0` |
+| ❌ 不带 | `AIME_SKILL` | ❌ `401 当前 Skill 版本过低` |
+
+> 关键教训：**「Skill 版本过低」这句提示是有误导性的**。它跟 key、跟版本
+> 都没有关系，纯粹是"请求头不全"。看到它不要往 key / 版本方向排查。
+
+### G-2 必须携带的请求头
+
+```
+Authorization:         Bearer <IWENCAI_API_KEY>
+Content-Type:          application/json
+X-Claw-Call-Type:      normal | retry
+X-Claw-Skill-Id:       <技能标识，见下表>
+X-Claw-Skill-Version:  1.0.0
+X-Claw-Plugin-Id:      none
+X-Claw-Plugin-Version: none
+X-Claw-Trace-Id:       <每次请求**新生成**，必须 64 字符>
+```
+
+`Trace-Id` 用 `secrets.token_hex(32)` 恰好 64 位十六进制。
+
+`channel` → `X-Claw-Skill-Id` 映射：
+
+| channel | `X-Claw-Skill-Id` |
+|---------|-------------------|
+| `news` | `news-search` |
+| `announcement` | `announcement-search` |
+| `report` | `report-search` |
+
+> 实测网关**不严格校验** skill-id 与 channel 的对应关系（用 `news-search` 打
+> `report` 同样返回 200），但仍应按下表填 —— 这是技能登记口径，不是自由字段。
+
+规范原文见 workspace 技能文档（**这份文档是权威来源**）：
+`.agents/skills/news-search/SKILL.md`、`.agents/skills/announcement-search/SKILL.md`、
+`.agents/skills/hithink-market-query/SKILL.md`。
+
+### G-3 响应结构的三个陷阱
+
+`/v1/comprehensive/search` 的真实结构（实测）：
+
+```json
+{
+  "status_code": 0,          // 0=OK；4=Sentinel 流控。必须检查！
+  "status_msg": "OK",
+  "total": 15,
+  "data": [ { ... }, ... ]   // ← 是**数组**，不是 {"items": [...]}
+}
+```
+
+| 陷阱 | 后果 |
+|------|------|
+| `data` 是**数组** | 写成 `result["data"]["items"]` 直接 `AttributeError`（本项目曾如此） |
+| **没有**顶层 `source` 字段 | 写成 `item.get("source")` 恒为空串（本项目曾如此） |
+| `extra` 是 **dict** | 网关以 JSON 对象返回（`{"publish_source": "微信公众平台", "real_publish_source": "昆仑策研究院", ...}`），**不是** dict 字面量字符串。按字符串处理会静默退化到无意义的 `data_source` 枚举值（如 `NEWS_VECTOR`，本项目曾如此） |
+
+另：`publish_time` 是 **unix 秒字符串**（`"1789509600"`），可读时间在 `publish_date`
+（`"2026-09-16 06:00:00"`）。取前者只会得到一坨数字。
+
+### G-4 复现 / 回归命令
+
+```bash
+python - <<'PY'
+import json, os, secrets, urllib.request
+key = os.environ["IWENCAI_API_KEY"]
+req = urllib.request.Request(
+    "https://openapi.iwencai.com/v1/comprehensive/search",
+    data=json.dumps({"channels": ["news"], "app_id": "AIME_SKILL",
+                     "query": "人工智能"}).encode(),
+    headers={
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
+        "X-Claw-Call-Type": "normal", "X-Claw-Skill-Id": "news-search",
+        "X-Claw-Skill-Version": "1.0.0", "X-Claw-Plugin-Id": "none",
+        "X-Claw-Plugin-Version": "none", "X-Claw-Trace-Id": secrets.token_hex(32),
+    }, method="POST")
+print(json.loads(urllib.request.urlopen(req, timeout=30).read())["status_code"])
+PY
+# 期望输出：0      若为 4 = app_id 不对；若 HTTP 401 = 缺 X-Claw-* 头
+```
+
+---
+
+## H. 「静默降级 + 参数默认值」组合会产出**错数据**（✅ v3.3.30 已修复，机制保留记录）
+
+**这一组不是「取不到数据」，而是「取到了错误的数据且不报错」—— 比源挂掉更危险。**
+源挂掉会被 `live_smoke.py` 判 `FAIL` 并告警；这类缺陷**所有监控都是绿的**。
+
+### H-1 `historical_kline` 请求分钟周期返回日线
+
+| 项目 | 内容 |
+|------|------|
+| 现象 | 请求 `period="5m"`，返回 1498 根**日线**（首行 `2020-07-27`），无任何告警 |
+| 触发链路 | ① 主源 `eltdx_fetchers._normalize_period` 只认 day/week/month → 抛 `ValueError`；② SmartRouter 按设计降级 akshare；③ 备源 `_fetch_kline_from_em` 参数构造为 `_EM_KLT.get(period, "101")` —— **未识别周期一律落默认值 `101`=日K** |
+| 根因定位 | `akshare_fetchers.py` 的 `_EM_KLT.get(period, "101")`（默认值兜底 = 静默换周期） |
+| 复现 | `historical_kline period=5m` → 观察 `src` 字段：修复前是 `akshare`、行数 ~1498 且日期是 2020 年；修复后是 `eltdx`、行数≈count 且日期带时分 |
+| 修法 | 主源补齐分钟周期；备源新增 `_norm_klt()`，**未识别周期直接抛 `ValueError`**（宁可报错不给错数据），并补全分钟 `klt=1/5/15/30/60` |
+| 同类点 | 腾讯备源 `ifzq` 的 `per` 参数只认 day/week/month，此前 `{"daily":"day",...}.get(period,"day")` **同样落默认值 day** —— 已改为显式拒绝分钟/未知周期 |
+
+### H-2 `period="1m"` 返回月线（别名表口径冲突）
+
+| 项目 | 内容 |
+|------|------|
+| 现象 | 请求 `period="1m"` 返回**月线**（如 `2022-08-31`） |
+| 根因 | 两个源的别名表都写 `"1m": "month"`（备源 `"1m": "monthly"`）；而 `fetch_full_kline` 不归一化 → **同一参数名在两个工具里语义相反**（`eltdx_get_kline` 是月线、`eltdx_get_full_kline` 是 1 分钟） |
+| 修法 | v3.3.30 **BREAKING**：`1m` 统一为「1 分钟」（对齐 eltdx 官方口径），月线改用 `month`/`monthly`/`1mo`；短别名 `m` 保留为月线以兼容旧调用 |
+| 影响面 | 仓库内已 grep 确认无 `period="1m"` 调用点；外部脚本若用 `1m` 取月线需改 `1mo` |
+
+### H-3 一般化教训（**新写源时必看**）
+
+1. **禁止 `dict.get(key, 默认值)` 兜周期/枚举类参数。** 默认值必须落在
+   「语义等价」的值上；周期、复权、市场、品种这类参数没有安全默认值 → 一律抛错。
+2. **静默降级链必须校验「降级后语义是否一致」。** SmartRouter 的设计是
+   「主源失败→备源」，但若备源对同一参数的**解释不同**，降级就变成了数据污染。
+   新增备源时请对照主源逐参数核对值域。
+3. **别名表是共享语义，改动要全库同查。** `1m` 这类短别名在两个 fetcher 里各写一份，
+   极易分叉（本次就是两份都在、且都与 eltdx 官方口径不符）。
+4. **回归守卫写法**：本次新增的守卫断言是
+   `_norm_klt("foo")` 必须抛错、`_normalize_period("1m") == "1m"`。
+   若有人改回「默认值兜底」，测试立刻红。
+
+### H-4 新增形参会被「通用参数池」撞中（✅ v3.3.30 已加护栏）
+
+**现象**：给 `fetch_full_kline` 新增 `page_size` 形参后，`live_smoke.py` 的
+`full_kline [eltdx]` 由 `OK 6008 根 / 0.25s` 变 `FAIL reached max_pages / 6.47s`，
+工具层 `eltdx_get_full_kline` 同步报错。
+
+**根因**：`live_smoke.py` 的通用参数池（`COMMON_PARAMS`）是**按形参名精确匹配**下发的，
+里面带着 `"page_size": 5`（本意是服务巨潮公告 `cninfo_direct` 的每页 5 条）。旧代码
+没有 `page_size` 形参 → 该键被 `**kwargs` 吞掉、走 SDK 默认 800；新代码把它接住 →
+**每页 5 根** → 6012 根需 1203 页 → 撞穿 `max_pages=200`。
+
+**教训**：
+1. `live_smoke.py` 的参数池是**跨数据类型的共享字典**，新增通用名形参
+   （`count` / `size` / `limit` / `page_size` / `days` …）前，先查该名字在池中的既有取值；
+   语义冲突时在该类型的 `OVERRIDES` 里显式覆盖，**不要去删共享池的值**（会连累其他类型）。
+2. **fetcher 层要有下限护栏**，不能假设调用方给的页长合理。
+   本次新增 `_clamp_page_size()`：非法值 → 800，`< 100` → 抬到 100。
+   护栏放在 fetcher 而非仅工具层，任何传参路径（工具/路由/脚本/第三方）都受保护。
+3. 这类"新参数撞旧参数池"的失败**只会在真网络冒烟时暴露**，单测全绿说明不了问题 ——
+   **改了 fetcher 签名就一定要跑一次 `live_smoke.py`**。
+
+---
+
+## I. `minutes.recent`（0x0feb）主站不返回数据（**上游问题，暂无解**）
+
+**结论**：`eltdx_get_recent_minutes` 对应协议命令 `0x0feb`，**当前主站对该命令一律返回空**。
+
+实测矩阵（2026-09-26，eltdx 3.2.2，直连主站）：
+
+| 维度 | 取值 | 结果 |
+|------|------|------|
+| 标的 | `sh600519` / `sz000001` / `bj920185` | 全部 **0 点** |
+| 日期 | 当日、前 1/2/3 个交易日、`2026-09-18` | 全部 **0 点** |
+| 日期格式 | `20260918` / `2026-09-18` | 全部 **0 点** |
+| 对照组 | 同标的同日期跑 `minutes.today` / `minutes.history` | 均**正常 240 点** |
+
+**排除项**：不是参数格式问题（两种格式都试）、不是标的范围问题（沪深京都试）、
+不是交易日问题（对照组同日期有数据）。SDK 侧 `0x0FEB` 标记 `required_for_1_0=False`
+（非必需命令），报文构造在 Rust native 层，Python 层无法进一步诊断。
+
+**当前处理**：工具保留（上游修复后自动可用），但：
+- 数据源层对空结果**返回空 DataFrame 而非抛错**（它是独占源，抛错会污染源健康评分）；
+- `live_smoke.py` 对 `recent_minute` 单独标注，避免把「上游无数据」误判为 `FAIL`。
+
+**已知影响**：该工具目前**不承诺有数据**。需要历史分时请用 `eltdx_get_minute_history`（指定日，正常），需要当日分时用 `eltdx_get_minutes`。
+
+---
+
 ## 复检方法
 
 ```bash
-# 全量（主机 + 102 个源 + 129 个工具，约 7 分钟）
+# 全量（主机 + 103 个源 + 130 个工具，约 7 分钟）
 python scripts/live_smoke.py --out live_smoke_report.md
 
-# 只复检本清单涉及的类型（A/B/C/D 组）
+# 只复检本清单涉及的类型（A/B/C/D/H/I 组）
 python scripts/live_smoke.py --sources-only --skip-hosts \
-  --types historical_kline,minute_data,industry_data,industry_comparison,hot_rank,financial_stmt,company_info,fund_hold,local_kline,local_minute,wencai_news,wencai_query
+  --types historical_kline,minute_data,industry_data,industry_comparison,hot_rank,financial_stmt,company_info,fund_hold,local_kline,local_minute,wencai_news,wencai_query,recent_minute
 
 # 单独确认某个主机是否已恢复
 python -c "from curl_cffi import requests as r; print(r.get('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=2&fs=m:0+t:6&fields=f12', timeout=10, impersonate='chrome120').status_code)"
@@ -283,8 +504,13 @@ python -c "from curl_cffi import requests as r; print(r.get('https://push2.eastm
 > 判断「上游挂了」还是「自己改坏了」：先看主机连通性层，
 > 若某主机的**全部**源同时失败、而兄弟主机正常 → 上游节点问题。
 
+> **`wencai_news` 专项**：它返回空表时，先按 G-4 直接打 HTTP 确认是契约问题还是代码问题。
+> `wencai_query` 报错时，先按 E 组确认出口 IP 是否被问财封禁（`www.iwencai.com` 首页能否打开）。
+
 ## 更新记录
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-09-26 | v3.3.30 | 新增 **H 组「静默降级 + 参数默认值 → 错数据」**：`5m` 返回日线、`1m` 返回月线两个 P0 缺陷（根因、复现口径、修法与泛化教训）。这类缺陷**不会**被 `live_smoke.py` 判 `FAIL`——所有监控都是绿的。另补 **H-4「新增形参被通用参数池撞中」**（`page_size` 事故）；新增 **I 组「`minutes.recent`(0x0feb) 主站不返回数据」**（上游问题，工具保留不承诺有数据） |
+| 2026-09-22 | — | 新增 **G 组「问财 OpenAPI 网关契约」**（X-Claw-* 头、`app_id` 固定值、响应结构三陷阱）；`wencai_news` 四个叠加缺陷的修复入 F 组；`wencai_query` **出口 IP 被封**的结论入 E 组 |
 | 2026-09-20 | v3.3.21 | 首次建立。基于全量真实网络冒烟（102 源）整理 |

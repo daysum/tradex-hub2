@@ -253,13 +253,14 @@ class TestBackupSourceRegistration:
     """
 
     def test_total_data_types(self, router):
-        # 数据类型数不变（仍 78 个）
-        assert len(router._sources) == 78
+        # 数据类型数演进：78 → 79（v3.3.30 新增 recent_minute 近期历史分时 0x0feb）
+        assert len(router._sources) == 79
 
     def test_total_registrations(self, router):
         # 总注册数演进：90 → 94（v3.3.14）→ 101（v3.3.15）
-        #   → 102（本次：fund_hold 由单源升为 em_zlsj_direct + akshare 双源）
-        assert sum(len(v) for v in router._sources.values()) == 102
+        #   → 102（fund_hold 由单源升为 em_zlsj_direct + akshare 双源）
+        #   → 103（v3.3.30 新增 recent_minute，eltdx 独占源）
+        assert sum(len(v) for v in router._sources.values()) == 103
 
     def test_new_sources_registered_with_priority(self, router):
         for data_type, name, prio in NEW_SOURCES:

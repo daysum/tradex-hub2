@@ -277,26 +277,84 @@ def fetch_realtime_quote(code: str = "", symbol: str = "", **kwargs):
 
 
 _PERIOD_ALIASES = {
+    # 分钟周期（eltdx 直传 1m/5m/15m/30m/60m，底层编号见 docs/methods/7709-K线周期线.md）
+    "1m": "1m", "1min": "1m", "minute": "1m",
+    "5m": "5m", "5min": "5m",
+    "15m": "15m", "15min": "15m",
+    "30m": "30m", "30min": "30m",
+    "60m": "60m", "60min": "60m", "1h": "60m",
+    # 日线及以上
     "day": "day", "daily": "day", "d": "day", "1d": "day",
     "week": "week", "weekly": "week", "w": "week", "1w": "week",
-    "month": "month", "monthly": "month", "m": "month", "1m": "month",
+    # v3.3.30 BREAKING: '1m' 改指 1 分钟；月线用 month/monthly/1mo（'m' 保留以兼容旧调用）
+    "month": "month", "monthly": "month", "m": "month", "1mo": "month",
+    "quarter": "quarter", "q": "quarter", "1q": "quarter",
+    "year": "year", "y": "year", "1y": "year",
 }
+
+_MINUTE_PERIODS = frozenset({"1m", "5m", "15m", "30m", "60m"})
+
+_SUPPORTED_PERIOD_HINT = (
+    "1m/5m/15m/30m/60m, day, week, month, quarter, year "
+    "(aliases: 1min/5min/15min/30min/60min/1h, daily/d/1d, "
+    "weekly/w/1w, monthly/m/1mo, q/1q, y/1y)"
+)
 
 
 def _normalize_period(period: str) -> str:
-    """归一化 K 线周期命名（eltdx 只认 day/week/month）。
+    """归一化 K 线周期命名 → eltdx 期望的规范名。
+
+    v3.3.30 起支持分钟周期（1m/5m/15m/30m/60m）与季线/年线。
+    ⚠️ 破坏性变更：'1m' 语义由「月」改为「1 分钟」，与 eltdx 官方口径对齐；
+       月线请改用 'month' / 'monthly' / '1mo'。
 
     SmartRouter 上层调用方习惯传 akshare 风格命名（daily/weekly/monthly），
-    若不归一化会抛错→静默降级 akshare,绕过主源。非法周期直接抛错让上层可见。
+    若不归一化会抛错→静默降级 akshare,绕过主源。非法周期直接抛错让上层可见——
+    **绝不返回一个「看起来像 K 线」的默认周期**（历史事故：5m 打到备源后
+    东财 klt 落默认 101 → 静默返回日线）。
     """
     key = str(period or "").strip().lower()
     normalized = _PERIOD_ALIASES.get(key)
     if normalized is None:
         raise ValueError(
-            f"unsupported period: {period!r} "
-            "(supported: day/daily/d/1d, week/weekly/w/1w, month/monthly/m/1m)"
+            f"unsupported period: {period!r} (supported: {_SUPPORTED_PERIOD_HINT})"
         )
     return normalized
+
+
+def _is_minute_period(period: str) -> bool:
+    """判断周期是否为分钟级（1m/5m/15m/30m/60m）。"""
+    return _normalize_period(period) in _MINUTE_PERIODS
+
+
+# ============================================================
+# 分页页大小护栏（v3.3.30）
+# ============================================================
+# all_pages 全量拉取时，page_size 越小往返次数越多；更严重的是**总页数会撞穿
+# max_pages 而直接失败**：
+#   实测 fetch_full_kline(page_size=5) → 日线 6012 根需要 1203 页 ≫ max_pages=200
+#   → RuntimeError: bars.get reached max_pages before the server returned an empty page
+# 该现象曾在 live_smoke 里被误判成「代码回归」，实际是夹具把 page_size 传成了 5。
+# 这里把 page_size 统一约束到 [100, 800]：100 × 200 页 = 2 万根，
+# 足以覆盖绝大多数品种的日/周/月全量，同时保留调用方「想少翻几页」的余地。
+_PAGE_SIZE_DEFAULT = 800
+_PAGE_SIZE_FLOOR = 100
+_PAGE_SIZE_CEIL = 800  # 对齐 eltdx MAX_KLINE_PAGE_SIZE
+
+
+def _clamp_page_size(value: Any, default: int = _PAGE_SIZE_DEFAULT) -> int:
+    """把 all_pages 的 page_size 约束到 [_PAGE_SIZE_FLOOR, _PAGE_SIZE_CEIL]。
+
+    非法值（None / 空串 / 非数字 / <=0）回落到 default（等于 SDK 默认 800）。
+    只影响分页效率，**不改变最终返回的数据集合**，因此不属于「静默错数据」。
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    if n <= 0:
+        return default
+    return max(_PAGE_SIZE_FLOOR, min(n, _PAGE_SIZE_CEIL))
 
 
 def fetch_historical_kline(code: str = "", symbol: str = "", period: str = "day", count: int = 100, **kwargs):
@@ -304,6 +362,10 @@ def fetch_historical_kline(code: str = "", symbol: str = "", period: str = "day"
 
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
     KlineBar 字段映射（v3.1.3 修复）：date→time, volume→volume_lots。
+
+    v3.3.30: 支持分钟周期（1m/5m/15m/30m/60m）与季线/年线；行构造统一走
+    `_bar_to_row`（分钟周期需要 "YYYY-MM-DD HH:MM"，不能直接透传 datetime）。
+    单页上限 800 根，需要全量请用 fetch_full_kline。
     """
     import pandas as pd
     client = _get_client()
@@ -315,18 +377,7 @@ def fetch_historical_kline(code: str = "", symbol: str = "", period: str = "day"
     bars = getattr(result, "bars", None) or []
     if not bars:
         raise RuntimeError(f"no kline bars for period={period}")
-    rows = []
-    for b in bars:
-        rows.append({
-            "日期": getattr(b, "time", None),
-            "开盘": getattr(b, "open", None),
-            "最高": getattr(b, "high", None),
-            "最低": getattr(b, "low", None),
-            "收盘": getattr(b, "close", None),
-            "成交量": getattr(b, "volume_lots", None),
-            "成交额": getattr(b, "amount", None),
-        })
-    return pd.DataFrame(rows)
+    return pd.DataFrame([_bar_to_row(b) for b in bars])
 
 
 def fetch_minute_data(code: str = "", symbol: str = "", **kwargs):
@@ -354,38 +405,88 @@ def fetch_minute_data(code: str = "", symbol: str = "", **kwargs):
     return pd.DataFrame(rows)
 
 
-def fetch_security_codes(market: str = "all", **kwargs):
-    """全市场证券代码表（eltdx 源，v3.3.7 新增）。
+# 代码表品种快捷方法（对应 eltdx CodeApi 的同名方法，v3.3.30 新增）
+_CODE_KIND_METHOD = {
+    "stock": "stocks",                # a_share + b_share
+    "a_share": "a_shares",
+    "etf": "etfs",
+    "index": "indices",
+    "st": "latest_st",                # ST/*ST 名单
+    "suspended": "latest_suspended",  # 停牌名单（返回 list[str]，非 SecurityCode）
+}
+
+# latest_st / latest_suspended 支持 market=None（内部自动跨沪深北）；
+# stocks/a_shares/etfs/indices 的 market 是必填位置参数，'all' 需自行合并。
+_CODE_KIND_OPTIONAL_MARKET = frozenset({"st", "suspended"})
+
+
+def _security_row(item) -> dict:
+    """SecurityCode → 中文列名 dict。"""
+    full_code = getattr(item, "full_code", None) or (
+        f"{getattr(item, 'exchange', '')}{getattr(item, 'code', '')}"
+    )
+    return {
+        "代码": full_code,
+        "名称": getattr(item, "name", None),
+        "类别": getattr(item, "category", None),
+        "板块": getattr(item, "board", None),
+    }
+
+
+def fetch_security_codes(market: str = "all", kind: str = "", **kwargs):
+    """全市场证券代码表（eltdx 源，v3.3.7 新增；v3.3.30 增 kind 品种快捷）。
 
     通过 codes.all / codes.all_markets 返回精确的证券分类清单：
     含代码、名称、类别（a_share/etf/index/bond 等）、板块（主板/创业板/科创板）。
 
     相比 akshare 行情快照，这是权威代码表：含停牌股、精确分类。
     market 取值：'sh' / 'sz' / 'bj' / 'all'（默认沪深京三市场）。
+
+    kind 品种快捷（空=全部品种，等价于旧行为）：
+      stock     → codes.stocks()     A 股 + B 股
+      a_share   → codes.a_shares()   纯 A 股
+      etf       → codes.etfs()
+      index     → codes.indices()
+      st        → codes.latest_st()      ST/*ST 名单
+      suspended → codes.latest_suspended() 停牌名单（返回仅含"代码"列）
+    例：market='bj', kind='stock' 等价于 client.codes.stocks('bj')（北交所股票表）。
     """
     import pandas as pd
     client = _get_client()
     if client is None:
         raise RuntimeError("eltdx client not available")
     market = (market or "all").strip().lower()
-    if market == "all":
-        items = client.codes.all_markets()
-    else:
-        items = client.codes.all(market)
+    kind_key = str(kind or "").strip().lower()
+
+    if kind_key:
+        method_name = _CODE_KIND_METHOD.get(kind_key)
+        if method_name is None:
+            raise ValueError(
+                f"unsupported kind: {kind!r} (choices: {sorted(_CODE_KIND_METHOD)})"
+            )
+        method = getattr(client.codes, method_name, None)
+        if method is None:
+            raise RuntimeError(f"eltdx CodeApi has no method: {method_name}")
+        if kind_key in _CODE_KIND_OPTIONAL_MARKET:
+            items = method(None if market == "all" else market)
+            if not items:
+                raise RuntimeError(f"no securities for market={market} kind={kind_key}")
+            if kind_key == "suspended":
+                # 该 API 返回纯代码字符串列表，无名称/类别字段
+                return pd.DataFrame({"代码": [str(c) for c in items]})
+        else:
+            markets = ("sh", "sz", "bj") if market == "all" else (market,)
+            items = []
+            for m in markets:
+                items.extend(method(m))
+        if not items:
+            raise RuntimeError(f"no securities for market={market} kind={kind_key}")
+        return pd.DataFrame([_security_row(item) for item in items])
+
+    items = client.codes.all_markets() if market == "all" else client.codes.all(market)
     if not items:
         raise RuntimeError(f"no securities for market={market}")
-    rows = []
-    for item in items:
-        full_code = getattr(item, "full_code", None) or (
-            f"{getattr(item, 'exchange', '')}{getattr(item, 'code', '')}"
-        )
-        rows.append({
-            "代码": full_code,
-            "名称": getattr(item, "name", None),
-            "类别": getattr(item, "category", None),
-            "板块": getattr(item, "board", None),
-        })
-    return pd.DataFrame(rows)
+    return pd.DataFrame([_security_row(item) for item in items])
 
 
 def _market_cn(code) -> str:
@@ -430,6 +531,17 @@ def fetch_all_a_shares(**kwargs):
     return df
 
 
+def _minute_points_to_df(points) -> "pd.DataFrame":
+    """IntradayPoint 序列 → 中文列名 DataFrame（时间/价格/均价/成交量）。"""
+    import pandas as pd
+    return pd.DataFrame([{
+        "时间": getattr(p, "time_label", None) or getattr(p, "time", None),
+        "价格": getattr(p, "price", None),
+        "均价": getattr(p, "avg_price", None),
+        "成交量": getattr(p, "volume", None),
+    } for p in points])
+
+
 def fetch_minute_history(code: str = "", symbol: str = "", trading_date: str = "", **kwargs):
     """历史分时数据（eltdx 源，v3.3.7 新增）。
 
@@ -446,15 +558,32 @@ def fetch_minute_history(code: str = "", symbol: str = "", trading_date: str = "
     points = getattr(result, "points", None) or []
     if not points:
         raise RuntimeError(f"no minute history for {norm_code} on {norm_date}")
-    rows = []
-    for p in points:
-        rows.append({
-            "时间": getattr(p, "time_label", None) or getattr(p, "time", None),
-            "价格": getattr(p, "price", None),
-            "均价": getattr(p, "avg_price", None),
-            "成交量": getattr(p, "volume", None),
-        })
-    return pd.DataFrame(rows)
+    return _minute_points_to_df(points)
+
+
+def fetch_recent_minute(code: str = "", symbol: str = "", trading_date: str = "", **kwargs):
+    """近期历史分时（eltdx 源，v3.3.30 新增）。
+
+    底层 client.minutes.recent(code, trading_date)（协议 0x0feb），
+    与 fetch_minute_data（当日 today）/ fetch_minute_history（指定日 0x0fb4）
+    构成分时三件套。trading_date 为空时由 SDK 取当前日期。
+
+    ⚠️ 覆盖范围以服务端「近期窗口」为准，与 fetch_minute_history 不是同一接口。
+    ⚠️ 空结果**不抛错**（非交易日/超窗口返回空 DataFrame，由工具层转 no_data）：
+       本路由是独占源，在此抛 RuntimeError 会被 SmartRouter 记为源失败，
+       污染源健康评分。
+    """
+    import pandas as pd
+    client = _get_client()
+    if client is None:
+        raise RuntimeError("eltdx client not available")
+    norm_code = _normalize_symbol_code(symbol, code)
+    norm_date = (trading_date or "").replace("-", "").replace("/", "")
+    result = client.minutes.recent(norm_code, norm_date or None)
+    points = getattr(result, "points", None) or []
+    if not points:
+        return pd.DataFrame(columns=["时间", "价格", "均价", "成交量"])
+    return _minute_points_to_df(points)
 
 
 def fetch_minute_aux(code: str = "", symbol: str = "", kind: str = "buy_sell_strength", **kwargs):
@@ -566,20 +695,45 @@ def _bar_sort_key(bar) -> float:
         return float("inf")
 
 
-def fetch_full_kline(code: str = "", symbol: str = "", period: str = "day", max_pages: int = 30, **kwargs):
+def fetch_full_kline(
+    code: str = "",
+    symbol: str = "",
+    period: str = "day",
+    adjust: str = "",
+    max_pages: Optional[int] = 200,
+    page_size: int = 800,
+    **kwargs,
+):
     """全量 K 线（eltdx 源，v3.3.7 新增）。
 
     自动分页拉取全量历史 K 线（bars.get(all_pages=True)），适合回测。
     与 fetch_historical_kline（单页 bars.get）互补。
 
     v3.3.13: eltdx 3.x 移除 client.bars.all()，改用 bars.get(all_pages=True, max_pages=...)。
+    v3.3.30: 新增 adjust / page_size；max_pages 默认由 30 放宽到 SDK 默认 200，
+             传 None 表示不设上限（谨慎：主站不返回空页时会一直翻）。
+             period 改走 _normalize_period —— 此前不归一化导致 period='1m' 在
+             本函数是「1 分钟」、在 fetch_historical_kline 是「月线」，同一参数名
+             两个工具语义相反。
+             ⚠️ page_size 有效范围被约束到 [100, 800]（见 _clamp_page_size）：
+             传 5 这类小页会让 6000+ 根日线要翻上千页，撞穿 max_pages 直接报错。
+             ⚠️ 耗时提示：1 分钟全量实测约 2.2 万根 ≈ 28 页（每页 800），
+             分钟周期建议显式传较小的 max_pages 控制单次耗时。
     """
     import pandas as pd
     client = _get_client()
     if client is None:
         raise RuntimeError("eltdx client not available")
     norm_code = _normalize_symbol_code(symbol, code)
-    result = client.bars.get(norm_code, period=period, all_pages=True, max_pages=max_pages)
+    period = _normalize_period(period)
+    result = client.bars.get(
+        norm_code,
+        period=period,
+        adjust=adjust or None,
+        all_pages=True,
+        page_size=_clamp_page_size(page_size),
+        max_pages=max_pages,
+    )
     bars = getattr(result, "bars", None) or []
     if not bars:
         raise RuntimeError(f"no kline bars for {norm_code}")
@@ -588,11 +742,26 @@ def fetch_full_kline(code: str = "", symbol: str = "", period: str = "day", max_
     return pd.DataFrame([_bar_to_row(b) for b in bars])
 
 
-def fetch_adjusted_kline(code: str = "", symbol: str = "", period: str = "day", adjust: str = "qfq", count: int = 800, **kwargs):
-    """复权 K 线（eltdx 源，v3.3.7 新增）。
+def fetch_adjusted_kline(
+    code: str = "",
+    symbol: str = "",
+    period: str = "day",
+    adjust: str = "qfq",
+    count: int = 800,
+    all_pages: bool = False,
+    max_pages: Optional[int] = 200,
+    page_size: int = 800,
+    anchor_date: str = "",
+    **kwargs,
+):
+    """复权 K 线（eltdx 源，v3.3.7 新增；v3.3.30 支持分钟周期与分页）。
 
-    通过 bars.get(adjust=...) 返回前复权(qfq)/后复权(hfq) K 线，
+    通过 bars.get(adjust=...) 返回前复权/后复权 K 线，
     复权由主站计算（eltdx 3.x 起；2.x 时代为 helpers.adjusted_kline 本地计算）。
+
+    adjust 取值：qfq/front（前复权）、hfq/back（后复权）、
+                 fixed_qfq/fixed_front、fixed_hfq/fixed_back（定点复权，需 anchor_date）。
+    all_pages=True 时按 page_size 翻页到空页，并按时间升序重排（此时 count 被忽略）。
     """
     import pandas as pd
     client = _get_client()
@@ -600,10 +769,21 @@ def fetch_adjusted_kline(code: str = "", symbol: str = "", period: str = "day", 
         raise RuntimeError("eltdx client not available")
     norm_code = _normalize_symbol_code(symbol, code)
     period = _normalize_period(period)
-    result = client.bars.get(norm_code, period=period, adjust=adjust, count=count)
+    result = client.bars.get(
+        norm_code,
+        period=period,
+        adjust=adjust,
+        anchor_date=anchor_date or None,
+        count=count,
+        all_pages=all_pages,
+        page_size=_clamp_page_size(page_size),
+        max_pages=max_pages if all_pages else None,
+    )
     bars = getattr(result, "bars", None) or []
     if not bars:
         raise RuntimeError(f"no adjusted kline bars for {norm_code}")
+    if all_pages:
+        bars = sorted(bars, key=_bar_sort_key)
     return pd.DataFrame([_bar_to_row(b) for b in bars])
 
 

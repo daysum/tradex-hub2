@@ -75,7 +75,11 @@ class TestNormalizePeriod:
         assert ef._normalize_period("weekly") == "week"
         assert ef._normalize_period("w") == "week"
         assert ef._normalize_period("monthly") == "month"
-        assert ef._normalize_period("1m") == "month"
+        # v3.3.30 BREAKING: '1m' 由「月线」改为「1 分钟」，与 eltdx 官方口径对齐。
+        # 月线改用 month/monthly/1mo（'m' 仍兼容为月线）。
+        assert ef._normalize_period("1m") == "1m"
+        assert ef._normalize_period("1mo") == "month"
+        assert ef._normalize_period("m") == "month"
 
     def test_invalid_raises(self):
         with pytest.raises(ValueError):

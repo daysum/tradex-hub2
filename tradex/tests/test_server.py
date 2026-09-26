@@ -10,9 +10,9 @@ class TestServerSetup:
         assert mcp_server.name == "tradex"
 
     def test_all_90_tools_registered(self, mcp_server):
-        """v3.3.9: 129 tools (127 + 本地数据 2 个). 数量精确锁定, 版本演进需同步更新."""
+        """v3.3.30: 130 tools (127 + 本地数据 2 个 + recent_minutes 1 个). 数量精确锁定, 版本演进需同步更新."""
         tools = mcp_server._tool_manager._tools
-        assert len(tools) == 129, f"Expected 129 tools, got {len(tools)}"
+        assert len(tools) == 130, f"Expected 130 tools, got {len(tools)}"
 
     def test_v01_tools_present(self, mcp_server):
         """V0.1 company info + price data tools (8 tools)."""
@@ -127,6 +127,9 @@ class TestServerSetup:
             assert tool_name in tools, f"V0.6 tool '{tool_name}' not registered"
 
     def test_tool_count_per_version(self, mcp_server):
-        """v3.3.9 三层架构: 实际注册工具总数精确锁定为 129 (防重复注册回归)."""
+        """v3.3.30: 实际注册工具总数精确锁定为 130 (防重复注册回归).
+
+        129 → 130：新增 eltdx_get_recent_minutes（近期历史分时 0x0feb）。
+        """
         tools = mcp_server._tool_manager._tools
-        assert len(tools) == 129
+        assert len(tools) == 130
