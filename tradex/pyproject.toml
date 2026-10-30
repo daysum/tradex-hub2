@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tradex"
-version = "3.3.30"
+version = "3.6.0"
 description = "China Financial Data MCP Server based on AKShare - Free alternative to commercial financial data MCPs"
 readme = "README.md"
 license = "Apache-2.0"
@@ -55,7 +55,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/tradex", "src/astock_signals"]
+packages = ["src/tradex", "src/astock_signals", "src/tdxdata"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

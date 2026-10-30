@@ -13,6 +13,7 @@ import functools
 import logging
 import threading
 import atexit
+from datetime import date, datetime
 from typing import Any, Optional
 
 logger = logging.getLogger("tradex.eltdx")
@@ -357,15 +358,78 @@ def _clamp_page_size(value: Any, default: int = _PAGE_SIZE_DEFAULT) -> int:
     return max(_PAGE_SIZE_FLOOR, min(n, _PAGE_SIZE_CEIL))
 
 
-def fetch_historical_kline(code: str = "", symbol: str = "", period: str = "day", count: int = 100, **kwargs):
+# ── 历史 K 线日期范围支持（K 组修复，v3.4.1）────────────────────────────
+# 背景：此前 fetch_historical_kline 只接 count，start_date/end_date 被
+# **kwargs 吞掉；get_historical_price 传日期区间时仍返回最近 100 根。
+# 现按日期范围分页回溯：bars.get(start=offset) 的 offset 从「最新一页」向
+# 更早方向推进（与 fetch_full_kline 的 all_pages 翻页语义一致）。
+_BARS_PER_CALENDAR_DAY = {
+    "1m": 240.0, "5m": 48.0, "15m": 16.0, "30m": 8.0, "60m": 4.0,
+    "day": 1.6, "week": 1 / 7 * 1.2, "month": 1 / 30 * 1.2,
+    "quarter": 1 / 90 * 1.2, "year": 1 / 365 * 1.2,
+}
+_HISTORY_PAGE_SIZE = 800          # eltdx 单页硬上限
+_HISTORY_MAX_PAGES = 8            # 8 × 800 = 6400 根；日线约 25 年，分钟线约 26 天
+_HISTORY_MIN_PAGE = 100           # 小范围也一次取 100 根，避免频繁往返
+
+
+def _ymd(value: Any) -> str:
+    """YYYYMMDD / YYYY-MM-DD → YYYYMMDD；空串返回空串；非法格式抛错。"""
+    s = str(value or "").strip().replace("-", "").replace("/", "")
+    if not s:
+        return ""
+    if len(s) != 8 or not s.isdigit():
+        raise ValueError(f"日期格式必须是 YYYYMMDD 或 YYYY-MM-DD（收到 {value!r}）")
+    return s
+
+
+def _bar_date_key(bar: Any) -> str:
+    """KlineBar.time → YYYYMMDD（用于日期范围比较）。"""
+    t = getattr(bar, "time", None)
+    if hasattr(t, "strftime"):
+        return t.strftime("%Y%m%d")
+    s = str(t or "")
+    return s[:10].replace("-", "").replace("/", "")
+
+
+def _estimate_history_bars(period: str, earliest: str) -> int:
+    """按日历天估算从 earliest 到今天需要的 K 线根数（含缓冲）。"""
+    try:
+        start_dt = datetime.strptime(earliest, "%Y%m%d").date()
+    except ValueError as exc:
+        raise ValueError(f"日期非法：{earliest!r}") from exc
+    days = max(1, (date.today() - start_dt).days)
+    rate = _BARS_PER_CALENDAR_DAY.get(period, 1.6)
+    return int(days * rate) + 10
+
+
+def fetch_historical_kline(
+    code: str = "",
+    symbol: str = "",
+    period: str = "day",
+    start_date: str = "",
+    end_date: str = "",
+    adjust: str = "",
+    count: int = 100,
+    **kwargs,
+):
     """历史 K 线（eltdx 源）。返回中文列名 DataFrame（与 akshare 口径对齐）。
 
     兼容 symbol/code 两种参数名（SmartRouter 路由归一化）。
     KlineBar 字段映射（v3.1.3 修复）：date→time, volume→volume_lots。
 
     v3.3.30: 支持分钟周期（1m/5m/15m/30m/60m）与季线/年线；行构造统一走
-    `_bar_to_row`（分钟周期需要 "YYYY-MM-DD HH:MM"，不能直接透传 datetime）。
-    单页上限 800 根，需要全量请用 fetch_full_kline。
+    `_bar_to_row`。
+
+    v3.4.1（K 组修复）：
+      - 真正支持 start_date / end_date：按日期范围从最新一页向前分页回溯，
+        并做日期过滤。此前这两个参数被 `**kwargs` 吞掉，调用方拿到的是
+        最近 count 根（默认 100），日期区间完全失效。
+      - 真正支持 adjust：透传 bars.get(adjust=...)（此前同样被忽略，
+        `get_historical_price(adjust="qfq")` 实际拿到不复权数据）。
+      - 日期范围优先于 count：count 只作为“至少取多少根”的下限；
+        live_smoke 通用参数池的 count=5 不会再截断 9 月的区间。
+      - 单次最多回溯 8 页（6400 根）；超出可用历史会显式抛错，不静默截断。
     """
     import pandas as pd
     client = _get_client()
@@ -373,11 +437,78 @@ def fetch_historical_kline(code: str = "", symbol: str = "", period: str = "day"
         raise RuntimeError("eltdx client not available")
     norm_code = _normalize_symbol_code(symbol, code)
     period = _normalize_period(period)
-    result = client.bars.get(norm_code, period=period, count=count)
-    bars = getattr(result, "bars", None) or []
-    if not bars:
+    start = _ymd(start_date)
+    end = _ymd(end_date)
+    if start and end and start > end:
+        raise ValueError(f"start_date({start}) 不能晚于 end_date({end})")
+
+    try:
+        count_val = int(count or 0)
+    except (TypeError, ValueError):
+        count_val = 0
+
+    # 无日期范围：保持原有行为（单次 count 根，count<=0 回默认 100）。
+    if not start and not end:
+        if count_val <= 0:
+            count_val = 100
+        result = client.bars.get(
+            norm_code, period=period, count=count_val, adjust=adjust or None
+        )
+        bars = getattr(result, "bars", None) or []
+        if not bars:
+            raise RuntimeError(f"no kline bars for period={period}")
+        return pd.DataFrame([_bar_to_row(b) for b in bars])
+
+    # 有日期范围：估算需要回溯的根数，分页取到 earliest 之前。
+    earliest_needed = start or end
+    estimate = _estimate_history_bars(period, earliest_needed)
+    page_size = min(_HISTORY_PAGE_SIZE, max(_HISTORY_MIN_PAGE, estimate, count_val or 0))
+
+    collected: list[Any] = []
+    offset = 0
+    for _ in range(_HISTORY_MAX_PAGES):
+        result = client.bars.get(
+            norm_code,
+            period=period,
+            start=offset,
+            count=page_size,
+            adjust=adjust or None,
+        )
+        page_bars = list(getattr(result, "bars", None) or [])
+        if not page_bars:
+            break
+        collected.extend(page_bars)
+        earliest_fetched = min(_bar_date_key(b) for b in page_bars)
+        if earliest_fetched <= earliest_needed:
+            break
+        if len(page_bars) < page_size:
+            break  # 已到历史尽头
+        offset += len(page_bars)
+
+    if not collected:
         raise RuntimeError(f"no kline bars for period={period}")
-    return pd.DataFrame([_bar_to_row(b) for b in bars])
+    earliest_fetched = min(_bar_date_key(b) for b in collected)
+    if earliest_fetched > earliest_needed:
+        raise RuntimeError(
+            f"日期范围超出可获取历史：请求最早 {earliest_needed}，"
+            f"实际最早只能取到 {earliest_fetched}（已回溯 {len(collected)} 根）"
+        )
+
+    bars = sorted(collected, key=_bar_sort_key)
+    rows = []
+    for bar in bars:
+        key = _bar_date_key(bar)
+        if start and key < start:
+            continue
+        if end and key > end:
+            continue
+        rows.append(_bar_to_row(bar))
+    if not rows:
+        raise RuntimeError(
+            f"日期范围内无 K 线数据（{norm_code}, "
+            f"{start_date or '...'}~{end_date or '...'}）"
+        )
+    return pd.DataFrame(rows)
 
 
 def fetch_minute_data(code: str = "", symbol: str = "", **kwargs):

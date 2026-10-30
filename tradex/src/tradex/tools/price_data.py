@@ -149,6 +149,7 @@ def register(mcp: FastMCP):
                 start_date=start_date,
                 end_date=end_date,
                 adjust=adjust,
+                timeout=30,
             )
             result = df_to_json(df, max_rows=500)
             cache.set(cache_key, result, TTL_DAILY)
@@ -179,7 +180,7 @@ def register(mcp: FastMCP):
             return cached
 
         try:
-            df, _src = _router.route("minute_data", symbol=symbol)
+            df, _src = _router.route("minute_data", symbol=symbol, timeout=30)
             if df is None or df.empty:
                 return error_response(
                     f"获取分时数据失败 ({symbol}): 数据源返回空数据",

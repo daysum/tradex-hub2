@@ -1,0 +1,4809 @@
+{
+ "_meta": {
+  "生成": "由 examples/tdx_data_fetch.py 抽出（ast 解析）",
+  "PRODUCTS": 421,
+  "PB_PRODUCTS": 36,
+  "说明": "PRODUCTS = 表格型产品（get() 可直接返回 列名+行）；PB_PRODUCTS = protobuf/JSON 非表格通道，仅供 raw 调用",
+  "域分类": "由 tdxdata/domains.py 的 domain_of() 生成",
+  "参数占位符": {
+   "说明": "params 里可用占位符：@code@（6 位代码，kwargs code=）与 #date#（YYYY-MM-DD/YYYYMMDD，kwargs date=）；由 tdxdata.client._fill 在 get() 时填充，kwargs 未给时用内置默认值（code=600519、date=最近收盘日）。占位符写法沿用本仓两处既有先例：_engine/catalog/page_cmd_params.json 的 #code#/#date# 族与 sections/f10.py 的 @code@/@sub@。",
+   "登记轮次": "2026-10-28 批次 B3（task-3）：35 条写死代码/日期的产品参数位对号入座；每条占位位均有出处：page_cmd_params.json 同 cmd 模板形状逐位匹配，或 sections/f10.py::SECTIONS 子码证据。其余未改产品（无形状证据）在任务报告中逐条登记。",
+   "gate 判据供 Lead 落测试": "421 条 products 的 params 序列化后不得残留「写死 6 位代码/日期且无占位符且无出处」的条目；机械判据（供 gate.py 引用）：存在 #dateTime# / 未登记占位符 token 即 FAIL（当前唯一残留：无——lzzdscj 的 #dateTime# 属 page_cmd_params 既有机制但 products.json 未登记该 key，见报告）。"
+  }
+ },
+ "products": {
+  "holiday": {
+   "cmd": "CWServ.ph_datacenter_hg_holiday",
+   "ctl": 33,
+   "params": [
+    "001",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "lhb": {
+   "cmd": "CWServ.ph_zt_lhb_sy",
+   "ctl": 21,
+   "params": [
+    "00101",
+    "1",
+    "2026",
+    "10",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "margin": {
+   "cmd": "CWServ.ph_zt_lrzt_lrtj_zrt",
+   "ctl": 28,
+   "params": [
+    "00101",
+    "",
+    "",
+    "",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "north": {
+   "cmd": "CWServ.ph_tdxdatacenter_hsgt",
+   "ctl": 30,
+   "params": [
+    "lszjlx3",
+    "4",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "fin": {
+   "cmd": "CWServ.ph_agf10_cw_zcfzb",
+   "ctl": 26,
+   "params": [
+    "600303"
+   ],
+   "domain": "财报"
+  },
+  "dzjy": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_v2",
+   "ctl": 33,
+   "params": [
+    "00102",
+    "",
+    "",
+    "0"
+   ],
+   "domain": "大宗交易"
+  },
+  "zdt": {
+   "cmd": "CWServ.ph_datacenter_zdt_zdfx",
+   "ctl": 31,
+   "params": [
+    "zdtj",
+    "2026-10-23",
+    0,
+    ""
+   ],
+   "domain": "市场统计"
+  },
+  "gdhs": {
+   "cmd": "CWServ.ph_zt_gbgd_gdhs",
+   "ctl": 24,
+   "params": [
+    "jszd",
+    "1",
+    ""
+   ],
+   "domain": "股东与持股"
+  },
+  "cmfb": {
+   "cmd": "CWServ.ph_tdxdatacenter_cmfb_ggss",
+   "ctl": 35,
+   "params": [
+    "2",
+    "920091"
+   ],
+   "domain": "其他"
+  },
+  "ztzb": {
+   "cmd": "CWServ.ph_zt_kp_sy_ztzb",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "xgipo": {
+   "cmd": "CWServ.ph_zt_xg_ipo",
+   "ctl": 21,
+   "params": [
+    "grid2",
+    "--",
+    "--",
+    "",
+    1,
+    1
+   ],
+   "domain": "新股与再融资"
+  },
+  "ipozcz": {
+   "cmd": "CWServ.ph_zt_xg_ipozcz",
+   "ctl": 24,
+   "params": [
+    "001"
+   ],
+   "domain": "新股与再融资"
+  },
+  "lyb": {
+   "cmd": "CWServ.ph_agf10_cw_lyb",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "600303"
+   ],
+   "domain": "财报"
+  },
+  "xjllb": {
+   "cmd": "CWServ.ph_agf10_cw_xjllb",
+   "ctl": 26,
+   "params": [
+    "00101",
+    "600303"
+   ],
+   "domain": "财报"
+  },
+  "dzjygp": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_gpxq",
+   "ctl": 35,
+   "params": [
+    "002",
+    "002384",
+    "0",
+    0,
+    0
+   ],
+   "domain": "大宗交易"
+  },
+  "hyyyb": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_hyyyb",
+   "ctl": 36,
+   "params": [
+    "001",
+    "1",
+    "N002",
+    "1",
+    1,
+    20
+   ],
+   "domain": "大宗交易"
+  },
+  "jgfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_jgfx",
+   "ctl": 35,
+   "params": [
+    "003",
+    "",
+    "",
+    "",
+    "",
+    0,
+    0
+   ],
+   "domain": "大宗交易"
+  },
+  "ztqd": {
+   "cmd": "CWServ.ph_tdxdatacenter_ztqd",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "0",
+    "3",
+    "2026-10-23",
+    "2",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "sctj": {
+   "cmd": "CWServ.ph_tdxdatacenter_sctj",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "",
+    ""
+   ],
+   "domain": "市场统计"
+  },
+  "gsjj": {
+   "cmd": "CWServ.ph_agf10_gsjj",
+   "ctl": 22,
+   "params": [
+    "00101",
+    "600303",
+    "0"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "jyfx": {
+   "cmd": "CWServ.ph_agf10_jyfx",
+   "ctl": 22,
+   "params": [
+    "00301",
+    "600303",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "lhfp": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhfp",
+   "ctl": 26,
+   "params": [
+    "00102",
+    "#date#",
+    60,
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lrmx": {
+   "cmd": "CWServ.ph_zt_lrzt_lrmx",
+   "ctl": 24,
+   "params": [
+    "00104",
+    "2026-10-23",
+    1,
+    "",
+    1,
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "jglrtj": {
+   "cmd": "CWServ.ph_zt_lrzt_lrtj_zrt",
+   "ctl": 28,
+   "params": [
+    "00103",
+    "",
+    "",
+    "",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "phbj": {
+   "cmd": "CWServ.ph_tdxdatacenter_hqpd_phbj",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "N011",
+    "1",
+    "1",
+    "20"
+   ],
+   "domain": "其他"
+  },
+  "yffx": {
+   "cmd": "CWServ.ph_tdxdatacenter_yffx",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "600303",
+    "",
+    "",
+    1,
+    0
+   ],
+   "domain": "其他"
+  },
+  "jgdy": {
+   "cmd": "CWServ.ph_tdxdatacenter_jgdy_jgdy",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "",
+    "0",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "lhbsj": {
+   "cmd": "DataAggregation.lhbsj",
+   "ctl": 23,
+   "params": [
+    "00103",
+    "",
+    0,
+    0,
+    "",
+    1,
+    365
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tlsq": {
+   "cmd": "CWServ.ph_zt_tlsq_sy",
+   "ctl": 22,
+   "params": [
+    "00111",
+    0,
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "zcfz_all": {
+   "cmd": "CWServ.ph_agf10_cw_zcfz",
+   "ctl": 25,
+   "params": [
+    "00301",
+    "600303",
+    ""
+   ],
+   "domain": "财报"
+  },
+  "rdtc": {
+   "cmd": "CWServ.ph_agf10_rdtc",
+   "ctl": 22,
+   "params": [
+    "00103",
+    "@code@",
+    "0"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zbyz": {
+   "cmd": "CWServ.ph_agf10_jyfx_zbyz",
+   "ctl": 27,
+   "params": [
+    "00102",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "yybxq": {
+   "cmd": "CWServ.ph_zt_lhb_sy_yybxq",
+   "ctl": 27,
+   "params": [
+    "00101",
+    "",
+    "",
+    "",
+    "国泰海通证券股份有限公司总部",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lrbd": {
+   "cmd": "CWServ.ph_zt_lrzt_lrbd",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "",
+    "1",
+    "5",
+    "N001",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lrzt_sy": {
+   "cmd": "CWServ.ph_zt_lrzt_sy",
+   "ctl": 22,
+   "params": [
+    "00103",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ggxq": {
+   "cmd": "CWServ.ph_zt_lhbkp_ggxq",
+   "ctl": 25,
+   "params": [
+    "00101",
+    "920091",
+    "",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ggzx": {
+   "cmd": "CWServ.ph_tdxdatacenter_ggzx",
+   "ctl": 30,
+   "params": [
+    "00102",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tjx": {
+   "cmd": "CWServ.ph_tdxdatacenter_ybzxrm_tjx",
+   "ctl": 36,
+   "params": [
+    "00102"
+   ],
+   "domain": "其他"
+  },
+  "yjzx": {
+   "cmd": "CWServ.ph_tdxdatacenter_ybzxrm_jx",
+   "ctl": 35,
+   "params": [
+    "",
+    "",
+    "",
+    "",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "xjjj": {
+   "cmd": "CWServ.ph_zt_tlsq_wxjg",
+   "ctl": 24,
+   "params": [
+    "00302",
+    "",
+    "0",
+    "1"
+   ],
+   "domain": "新股与再融资"
+  },
+  "lhzy": {
+   "cmd": "CWServ.ph_zt_lhb_sy_zy",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "-1",
+    "",
+    "6",
+    "1",
+    "1",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "scfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_scfx",
+   "ctl": 30,
+   "params": [
+    "rzrq",
+    "1"
+   ],
+   "domain": "市场统计"
+  },
+  "hyfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_hyfx_sy",
+   "ctl": 33,
+   "params": [
+    2,
+    "X10"
+   ],
+   "domain": "市场统计"
+  },
+  "gqzy": {
+   "cmd": "CWServ.ph_tdxdatacenter_gqzy",
+   "ctl": 30,
+   "params": [
+    "0",
+    "1",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "fhrz": {
+   "cmd": "CWServ.ph_tdxdatacenter_fhrz",
+   "ctl": 30,
+   "params": [
+    "2",
+    "1"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "xsjj": {
+   "cmd": "CWServ.ph_tdxdatacenter_xsjj",
+   "ctl": 30,
+   "params": [
+    "jjzl2",
+    0,
+    ""
+   ],
+   "domain": "其他"
+  },
+  "jjhqpd": {
+   "cmd": "CWServ.ph_cfg_fx_jjhqpd",
+   "ctl": 25,
+   "params": [
+    "001",
+    "2026",
+    "0",
+    "10",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "qh_bkzs": {
+   "cmd": "CWServ.ph_pcwebcall_qh_hqpd_bkzs",
+   "ctl": 34,
+   "params": [
+    "1",
+    "2",
+    "20261031"
+   ],
+   "domain": "板块与行业"
+  },
+  "qh_qhhy": {
+   "cmd": "CWServ.ph_pcwebcall_qh_hqpd_qhhy",
+   "ctl": 34,
+   "params": [
+    "1",
+    "2",
+    "20261031",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "bkld_cfg": {
+   "cmd": "CWServ.ph_pcwebcall_hy_bkldscfg",
+   "ctl": 33,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "板块与行业"
+  },
+  "bkld_cnx": {
+   "cmd": "CWServ.ph_pcwebcall_hy_bkldscnx",
+   "ctl": 33,
+   "params": [
+    "002",
+    "#date#"
+   ],
+   "domain": "板块与行业"
+  },
+  "lhtc": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhtc",
+   "ctl": 26,
+   "params": [
+    "00101",
+    "#date#",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "etf_hq": {
+   "cmd": "CWServ.ph_jjzt_etf_hq",
+   "ctl": 23,
+   "params": [
+    "00101",
+    "8",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "lrrb": {
+   "cmd": "CWServ.ph_zt_lrzt_lrrb",
+   "ctl": 24,
+   "params": [
+    "00301",
+    "",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "nxjj": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_nxjj_gg",
+   "ctl": 32,
+   "params": [
+    "002",
+    "20261022",
+    "N004",
+    1
+   ],
+   "domain": "沪深港通"
+  },
+  "macro_jq": {
+   "cmd": "CWServ.ph_datacenter_mghg_hgjq",
+   "ctl": 32,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "macro_xf": {
+   "cmd": "CWServ.ph_datacenter_mghg_xf",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "macro_yh": {
+   "cmd": "CWServ.ph_datacenter_mghg_yh",
+   "ctl": 30,
+   "params": [
+    "002",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "hygz": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyxq_hygz",
+   "ctl": 40,
+   "params": [
+    "881344",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "qsfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_sy_qsfx",
+   "ctl": 38,
+   "params": [
+    "1",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "jjhq": {
+   "cmd": "CWServ.ph_jjzt_jjsc_jjhq",
+   "ctl": 26,
+   "params": [
+    "003",
+    "100102",
+    "N005",
+    "1",
+    "10",
+    "0"
+   ],
+   "domain": "基金与ETF"
+  },
+  "world_cal": {
+   "cmd": "CWServ.ph_datacenter_hg_cal",
+   "ctl": 29,
+   "params": [
+    "001",
+    "",
+    "",
+    ""
+   ],
+   "domain": "宏观"
+  },
+  "yhhb": {
+   "cmd": "CWServ.ph_datacenter_hg_yhhb",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "0",
+    "0"
+   ],
+   "domain": "宏观"
+  },
+  "czsz": {
+   "cmd": "CWServ.ph_datacenter_hg_czsz",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "0"
+   ],
+   "domain": "宏观"
+  },
+  "macro_gy": {
+   "cmd": "CWServ.ph_datacenter_mghg_gy",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "macro_my": {
+   "cmd": "CWServ.ph_datacenter_mghg_my",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "macro_wj": {
+   "cmd": "CWServ.ph_datacenter_mghg_wj",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "macro_sz": {
+   "cmd": "CWServ.ph_datacenter_mghg_sz",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "yzycbd": {
+   "cmd": "CWServ.ph_zt_lhb_sy_yzycbd",
+   "ctl": 28,
+   "params": [
+    "00102",
+    "",
+    30,
+    0,
+    0,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "etf_t0": {
+   "cmd": "CWServ.ph_jjzt_etf_t0",
+   "ctl": 23,
+   "params": [
+    "00101",
+    "0",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "etf_kjzs": {
+   "cmd": "CWServ.ph_jjzt_etfjj_kjzsetf",
+   "ctl": 30,
+   "params": [
+    "001"
+   ],
+   "domain": "基金与ETF"
+  },
+  "etf_xf": {
+   "cmd": "CWServ.ph_jjzt_etfjj_xfetfjj",
+   "ctl": 30,
+   "params": [
+    "007"
+   ],
+   "domain": "基金与ETF"
+  },
+  "etf_fejk": {
+   "cmd": "CWServ.ph_jjzt_etf_fejk",
+   "ctl": 25,
+   "params": [
+    "00101",
+    "1",
+    "4"
+   ],
+   "domain": "基金与ETF"
+  },
+  "jqzs": {
+   "cmd": "CWServ.ph_datacenter_hg_jqzs",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "0",
+    "0"
+   ],
+   "domain": "宏观"
+  },
+  "xjphg": {
+   "cmd": "CWServ.ph_datacenter_xjphg_wm",
+   "ctl": 31,
+   "params": [
+    "001",
+    "01,02,03,04",
+    "20",
+    "-1"
+   ],
+   "domain": "宏观"
+  },
+  "zx_gggz": {
+   "cmd": "CWServ.ph_zx_zsgz_gggz",
+   "ctl": 24,
+   "params": [
+    "00102",
+    "920091",
+    ""
+   ],
+   "domain": "资讯与AI"
+  },
+  "zs_zsgz": {
+   "cmd": "CWServ.ph_zx_zsdz_zsgz",
+   "ctl": 24,
+   "params": [
+    "00201",
+    "399006",
+    "000001"
+   ],
+   "domain": "资讯与AI"
+  },
+  "qsjg": {
+   "cmd": "CWServ.phzzfw_qsjg",
+   "ctl": 20,
+   "params": [
+    ""
+   ],
+   "domain": "其他"
+  },
+  "ztmx": {
+   "cmd": "CWServ.ph_pcwebcall_tclt_ztmx",
+   "ctl": 31,
+   "params": [
+    "7",
+    "880550",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "gnztetf": {
+   "cmd": "CWServ.ph_jjzt_etfjj_gnztetf",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "bklist": {
+   "cmd": "CWServ.app_bklist_ag",
+   "ctl": 22,
+   "params": [
+    "2"
+   ],
+   "domain": "板块与行业"
+  },
+  "xgmz": {
+   "cmd": "CWServ.ph_zt_xg_xgmz",
+   "ctl": 22,
+   "params": [
+    "003",
+    "",
+    2
+   ],
+   "domain": "新股与再融资"
+  },
+  "gscb": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_sy",
+   "ctl": 33,
+   "params": [
+    "00301",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "财报"
+  },
+  "gzh": {
+   "cmd": "CWServ.ph_tdxdatacenter_gz",
+   "ctl": 28,
+   "params": [
+    "000990",
+    "5"
+   ],
+   "domain": "其他"
+  },
+  "xjllrfz": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_xjllrfz",
+   "ctl": 38,
+   "params": [
+    "00102",
+    "",
+    0,
+    1
+   ],
+   "domain": "财报"
+  },
+  "ag_bsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_ag_bsb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ag_gzb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_ag_gzb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ag_zrb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_ag_zrb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ag_rqb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_ag_rqb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hk_bsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hk_bsb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hk_zrb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hk_zrb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hk_rsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hk_rsb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "usa_gzb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_usa_gzb",
+   "ctl": 39,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "usa_rqb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_usa_rqb",
+   "ctl": 39,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "zttz_xg": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_xggp",
+   "ctl": 35,
+   "params": [
+    "00901",
+    "880703",
+    "2",
+    1,
+    100,
+    0,
+    1
+   ],
+   "domain": "其他"
+  },
+  "etf_rb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_etf",
+   "ctl": 35,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hk_gzb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hk_gzb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hk_rqb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hk_rqb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ag_rsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_ag_rsb",
+   "ctl": 38,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "usa_bsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_usa_bsb",
+   "ctl": 39,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "usa_zrb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_usa_zrb",
+   "ctl": 39,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "usa_rsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_usa_rsb",
+   "ctl": 39,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "zsjj": {
+   "cmd": "CWServ.ph_jjzt_etf_zsjj",
+   "ctl": 25,
+   "params": [
+    "00101",
+    0
+   ],
+   "domain": "基金与ETF"
+  },
+  "dsjxy": {
+   "cmd": "CWServ.ph_tdxdatacenter_dsjxy",
+   "ctl": 31,
+   "params": [
+    "00101",
+    "3",
+    "",
+    "",
+    0
+   ],
+   "domain": "其他"
+  },
+  "north_jg": {
+   "cmd": "JJSServ.ph_datacenter_jjs_hsgtzt_v3_bsjj_jg",
+   "ctl": 45,
+   "params": [
+    "002",
+    "2026-06-30",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "zyzb": {
+   "cmd": "CWServ.ph_agf10_cw_zyzb",
+   "ctl": 25,
+   "params": [
+    "920091"
+   ],
+   "domain": "财报"
+  },
+  "cwbg": {
+   "cmd": "CWServ.ph_agf10_cw_cwbg",
+   "ctl": 25,
+   "params": [
+    "00101",
+    "600303",
+    "0"
+   ],
+   "domain": "财报"
+  },
+  "cwfxxq": {
+   "cmd": "CWServ.ph_agf10_cw_cwfxxq",
+   "ctl": 27,
+   "params": [
+    "600303"
+   ],
+   "domain": "财报"
+  },
+  "zysy": {
+   "cmd": "CWServ.ph_agf10_cw_sy_v2",
+   "ctl": 26,
+   "params": [
+    "920091"
+   ],
+   "domain": "财报"
+  },
+  "tjcj": {
+   "cmd": "CWServ.ph_agf10_cw_tjcj",
+   "ctl": 25,
+   "params": [
+    "600303"
+   ],
+   "domain": "财报"
+  },
+  "zyzbxq": {
+   "cmd": "CWServ.ph_agf10_cw_zyzbxqy_sy",
+   "ctl": 31,
+   "params": [
+    "600519"
+   ],
+   "domain": "财报"
+  },
+  "fhrz_agf10": {
+   "cmd": "CWServ.ph_agf10_fhrz",
+   "ctl": 22,
+   "params": [
+    "00101",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gbgd": {
+   "cmd": "CWServ.ph_agf10_gbgd",
+   "ctl": 22,
+   "params": [
+    "00201",
+    "@code@",
+    "",
+    "",
+    0
+   ],
+   "domain": "F10与个股资料"
+  },
+  "scrd": {
+   "cmd": "CWServ.ph_agf10_scrd",
+   "ctl": 22,
+   "params": [
+    "00201",
+    "920091",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zgjby": {
+   "cmd": "CWServ.ph_agf10_zg_jby",
+   "ctl": 24,
+   "params": [
+    "zhpf",
+    "@code@",
+    "2"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zgjsm": {
+   "cmd": "CWServ.ph_agf10_zg_jsm",
+   "ctl": 24,
+   "params": [
+    "jdbxzxt",
+    "@code@",
+    "1",
+    "",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zgscm": {
+   "cmd": "CWServ.ph_agf10_zg_scm",
+   "ctl": 24,
+   "params": [
+    "ztms",
+    "@code@",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zgyq": {
+   "cmd": "CWServ.ph_agf10_zg_yq",
+   "ctl": 23,
+   "params": [
+    "rdzt",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zgzs": {
+   "cmd": "CWServ.ph_agf10_zg_zs",
+   "ctl": 23,
+   "params": [
+    "zhpf",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zpggld": {
+   "cmd": "CWServ.ph_agf10_zp_ggld",
+   "ctl": 25,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gdfx": {
+   "cmd": "CWServ.ph_zt_gbgd_gdfx",
+   "ctl": 24,
+   "params": [
+    "00102",
+    "",
+    "",
+    "",
+    1
+   ],
+   "domain": "股东与持股"
+  },
+  "jgcg": {
+   "cmd": "CWServ.ph_zt_gbgd_jgcg",
+   "ctl": 24,
+   "params": [
+    "00201",
+    "99",
+    "",
+    "",
+    0
+   ],
+   "domain": "股东与持股"
+  },
+  "gbgdsy": {
+   "cmd": "CWServ.ph_zt_gbgd_sy",
+   "ctl": 22,
+   "params": [
+    "00301",
+    0
+   ],
+   "domain": "股东与持股"
+  },
+  "gbgdzjc": {
+   "cmd": "CWServ.ph_zt_gbgd_zjc",
+   "ctl": 23,
+   "params": [
+    "00502",
+    "qb",
+    "@code@",
+    "1"
+   ],
+   "domain": "股东与持股"
+  },
+  "jgcg2": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_gdzz_jgcg",
+   "ctl": 40,
+   "params": [
+    "2026-09-30",
+    "0",
+    "0",
+    "1",
+    "1"
+   ],
+   "domain": "股东与持股"
+  },
+  "dstx_lhb": {
+   "cmd": "CWServ.ph_agf10_dstx_lhb",
+   "ctl": 26,
+   "params": [
+    "00104",
+    "920091",
+    "",
+    "",
+    "1"
+   ],
+   "domain": "资讯与AI"
+  },
+  "hsgt_cgtj": {
+   "cmd": "CWServ.ph_tdxdatacenter_hsgt_v3_cgtj",
+   "ctl": 38,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "ggbkxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_hsgt_v3_ggbkxq",
+   "ctl": 40,
+   "params": [
+    "001",
+    "@code@",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgt_ss": {
+   "cmd": "CWServ.ph_tdxdatacenter_hsgt_v3_ss",
+   "ctl": 36,
+   "params": [
+    "001",
+    "",
+    10
+   ],
+   "domain": "沪深港通"
+  },
+  "qhlhb_jcgc": {
+   "cmd": "CWServ.ph_tdxdatacenter_qhlhb_jcgc",
+   "ctl": 36,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "qhlhb": {
+   "cmd": "CWServ.ph_tdxdatacenter_qhlhb_sy",
+   "ctl": 34,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    "",
+    "2026-10-23"
+   ],
+   "domain": "其他"
+  },
+  "qhlhb_syss": {
+   "cmd": "CWServ.ph_tdxdatacenter_qhlhb_syss",
+   "ctl": 36,
+   "params": [
+    "001",
+    "5",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "lhb_jyr": {
+   "cmd": "CWServ.ph_zt_lhb_jyr",
+   "ctl": 22,
+   "params": [
+    "",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhbss": {
+   "cmd": "CWServ.ph_zt_lhb_ss",
+   "ctl": 21,
+   "params": [
+    "00101",
+    0,
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhb_ggxq": {
+   "cmd": "CWServ.ph_zt_lhb_sy_ggxq",
+   "ctl": 26,
+   "params": [],
+   "domain": "龙虎榜与两融"
+  },
+  "hgtzy": {
+   "cmd": "CWServ.ph_zt_lhb_sy_hgtzy",
+   "ctl": 27,
+   "params": [
+    "00101",
+    "#date#",
+    0,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "hygg": {
+   "cmd": "CWServ.ph_zt_lhb_sy_hygg",
+   "ctl": 26,
+   "params": [
+    "00103",
+    1
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhb_jg": {
+   "cmd": "CWServ.ph_zt_lhb_sy_jg",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "",
+    1,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhbjd": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhbjd",
+   "ctl": 27,
+   "params": [
+    3,
+    1
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhbyc": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhbyc",
+   "ctl": 27,
+   "params": [
+    "3"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhzj": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhzj",
+   "ctl": 26,
+   "params": [
+    "00102",
+    "",
+    "0",
+    "",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "sgtzy": {
+   "cmd": "CWServ.ph_zt_lhb_sy_sgtzy",
+   "ctl": 27,
+   "params": [
+    "00101",
+    "#date#",
+    0,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "slph": {
+   "cmd": "CWServ.ph_zt_lhb_sy_slph",
+   "ctl": 26,
+   "params": [
+    "00101",
+    "",
+    "4",
+    "1",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "syph": {
+   "cmd": "CWServ.ph_zt_lhb_sy_syph",
+   "ctl": 26,
+   "params": [
+    "00101",
+    "",
+    "4",
+    "1",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "wxd": {
+   "cmd": "CWServ.ph_zt_lhb_sy_wxd",
+   "ctl": 25,
+   "params": {
+    "Params": [
+     "6",
+     "",
+     "5"
+    ]
+   },
+   "domain": "龙虎榜与两融"
+  },
+  "xwbj": {
+   "cmd": "CWServ.ph_zt_lhb_sy_xwbj",
+   "ctl": 26,
+   "params": [
+    "00101",
+    "Ä¦¸ù´óÍ¨Ö¤È¯(ÖÐ¹ú)ÓÐÏÞ¹«Ë¾ÉÏº£Òø³ÇÖÐÂ·Ö¤È¯ÓªÒµ²¿",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "yyb": {
+   "cmd": "CWServ.ph_zt_lhb_sy_yyb",
+   "ctl": 25,
+   "params": [
+    "00201",
+    "1",
+    2,
+    1,
+    1
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhbkp_sy": {
+   "cmd": "CWServ.ph_zt_lhbkp_sy",
+   "ctl": 23,
+   "params": [
+    "00301",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "ggrzrqmx": {
+   "cmd": "CWServ.ph_zt_lrzt_ggrzrqmx",
+   "ctl": 28,
+   "params": [
+    "00102",
+    "920091",
+    "1"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "lhfp_v2": {
+   "cmd": "DataAggregation.queryLhfp",
+   "ctl": 27,
+   "params": [
+    {
+     "date": "2026-10-23",
+     "cardId": "lxfb"
+    }
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "jjs_agxq": {
+   "cmd": "JJSServ.ph_datacenter_jjs_hsgt_v3_agxq",
+   "ctl": 40,
+   "params": [
+    "005",
+    "000001",
+    "0",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "jjs_jgxq": {
+   "cmd": "JJSServ.ph_datacenter_jjs_hsgt_v3_jgxq",
+   "ctl": 40,
+   "params": [
+    "001",
+    "9900041536",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "jjs_ss": {
+   "cmd": "JJSServ.ph_datacenter_jjs_hsgt_v3_ss",
+   "ctl": 38,
+   "params": [
+    "001",
+    "10"
+   ],
+   "domain": "沪深港通"
+  },
+  "kxjy": {
+   "cmd": "CWServ.ph_ai_sjfx_kxjy",
+   "ctl": 24,
+   "params": [
+    "lskx",
+    "920091",
+    "2"
+   ],
+   "domain": "资讯与AI"
+  },
+  "lhjy": {
+   "cmd": "CWServ.ph_ai_sjfx_lhjy",
+   "ctl": 24,
+   "params": [
+    "920091",
+    "2"
+   ],
+   "domain": "资讯与AI"
+  },
+  "lnjy": {
+   "cmd": "CWServ.ph_ai_sjfx_lnjy",
+   "ctl": 24,
+   "params": {
+    "CallName": "ph_ai_sjfx_lnjy",
+    "Params": [
+     "600215",
+     "1"
+    ]
+   },
+   "domain": "资讯与AI"
+  },
+  "rzrj": {
+   "cmd": "CWServ.ph_ai_sjfx_rzrj",
+   "ctl": 24,
+   "params": [
+    "001",
+    "600519",
+    "1",
+    ""
+   ],
+   "domain": "资讯与AI"
+  },
+  "sgj": {
+   "cmd": "CWServ.ph_ai_sjfx_sgj",
+   "ctl": 23,
+   "params": [
+    "001",
+    "920091",
+    "2"
+   ],
+   "domain": "资讯与AI"
+  },
+  "zdjy": {
+   "cmd": "CWServ.ph_ai_sjfx_zdjy",
+   "ctl": 24,
+   "params": [
+    "920091",
+    "2"
+   ],
+   "domain": "资讯与AI"
+  },
+  "zhpj": {
+   "cmd": "CWServ.ph_ai_sjfx_zhpj",
+   "ctl": 24,
+   "params": [
+    "wzsm",
+    "920091"
+   ],
+   "domain": "资讯与AI"
+  },
+  "zxzx_zt_new": {
+   "cmd": "CWServ.mzx_zxzx_zt_new",
+   "ctl": 24,
+   "params": [
+    "301",
+    "1001"
+   ],
+   "domain": "其他"
+  },
+  "zttz_zhid": {
+   "cmd": "CWServ.ph_AIcard_zttz_zhid",
+   "ctl": 28,
+   "params": [
+    "工业母机"
+   ],
+   "domain": "资讯与AI"
+  },
+  "hypm": {
+   "cmd": "CWServ.ph_agf10_hypm",
+   "ctl": 22,
+   "params": [
+    "00301",
+    "@code@",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gnzt_sjqd": {
+   "cmd": "CWServ.ph_cfg_gnzt_sjqd",
+   "ctl": 25,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tztp_gdtp": {
+   "cmd": "CWServ.ph_datacenter_tztp_gdtp",
+   "ctl": 32,
+   "params": [
+    "00401",
+    "9900011030",
+    "002369",
+    "卓翼科技",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tztp_ggtp": {
+   "cmd": "CWServ.ph_datacenter_tztp_ggtp",
+   "ctl": 32,
+   "params": [
+    "00101",
+    "9900011030",
+    "002369",
+    "卓翼科技"
+   ],
+   "domain": "其他"
+  },
+  "tztp_gstp": {
+   "cmd": "CWServ.ph_datacenter_tztp_gstp",
+   "ctl": 32,
+   "params": [
+    "00201",
+    "",
+    "9900011030",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tztp_ssk": {
+   "cmd": "CWServ.ph_datacenter_tztp_ssk",
+   "ctl": 31,
+   "params": [
+    "00101",
+    "600303"
+   ],
+   "domain": "其他"
+  },
+  "tztp_zntp_cyltp": {
+   "cmd": "CWServ.ph_datacenter_tztp_zntp_cyltp",
+   "ctl": 38,
+   "params": [
+    "00101",
+    "卓翼科技",
+    "002369",
+    "9900011030"
+   ],
+   "domain": "资金与筹码"
+  },
+  "tztp_zntp_djgz": {
+   "cmd": "CWServ.ph_datacenter_tztp_zntp_djgz",
+   "ctl": 37,
+   "params": [
+    "00101",
+    1,
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tztp_zntp_kgtp": {
+   "cmd": "CWServ.ph_datacenter_tztp_zntp_kgtp",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "9900011030",
+    "",
+    "卓翼科技",
+    "002369"
+   ],
+   "domain": "其他"
+  },
+  "tztp_zntp_khtp": {
+   "cmd": "CWServ.ph_datacenter_tztp_zntp_khtp",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "9900011030",
+    0,
+    0,
+    "卓翼科技",
+    "002369"
+   ],
+   "domain": "其他"
+  },
+  "wlnx_hyzg": {
+   "cmd": "CWServ.ph_hkdatacenter_wlnx_hyzg",
+   "ctl": 34,
+   "params": [
+    "00101",
+    "20261022",
+    5,
+    1
+   ],
+   "domain": "沪深港通"
+  },
+  "etf_ldhy": {
+   "cmd": "CWServ.ph_jjzt_etf_ldhy",
+   "ctl": 25,
+   "params": [
+    "00101",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "etf_sx_jjgs": {
+   "cmd": "CWServ.ph_jjzt_etf_sx_jjgs",
+   "ctl": 28,
+   "params": [],
+   "domain": "基金与ETF"
+  },
+  "etf_tt": {
+   "cmd": "CWServ.ph_jjzt_etf_tt",
+   "ctl": 23,
+   "params": [
+    "00101",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "etf_yxhy": {
+   "cmd": "CWServ.ph_jjzt_etf_yxhy",
+   "ctl": 25,
+   "params": [
+    "00101"
+   ],
+   "domain": "基金与ETF"
+  },
+  "etfjj_hyztetf": {
+   "cmd": "CWServ.ph_jjzt_etfjj_hyztetf",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "gggljj": {
+   "cmd": "CWServ.ph_jjzt_gggljj",
+   "ctl": 23,
+   "params": [
+    "00101",
+    "920091",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "基金与ETF"
+  },
+  "jjph": {
+   "cmd": "CWServ.ph_jjzt_jjph",
+   "ctl": 21,
+   "params": [
+    0,
+    2,
+    1,
+    1
+   ],
+   "domain": "基金与ETF"
+  },
+  "jjpj": {
+   "cmd": "CWServ.ph_jjzt_jjpj",
+   "ctl": 21,
+   "params": [
+    0,
+    1,
+    1,
+    1
+   ],
+   "domain": "基金与ETF"
+  },
+  "zcjj": {
+   "cmd": "CWServ.ph_jjzt_zcjj",
+   "ctl": 21,
+   "params": {
+    "CallName": "ph_jjzt_zcjj",
+    "Params": [
+     "00102",
+     "",
+     "",
+     1,
+     1,
+     1
+    ]
+   },
+   "domain": "基金与ETF"
+  },
+  "zsgz": {
+   "cmd": "CWServ.ph_jjzt_zsgz",
+   "ctl": 21,
+   "params": [
+    "00101",
+    "行业",
+    1,
+    1
+   ],
+   "domain": "基金与ETF"
+  },
+  "bklt": {
+   "cmd": "CWServ.ph_tdxdatacenter_bklt",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "2",
+    "2026-10-08"
+   ],
+   "domain": "板块与行业"
+  },
+  "cgfx_jgzc_gn_lscgbd": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_jgzc_gn_lscgbd",
+   "ctl": 45,
+   "params": [
+    "881151",
+    "1"
+   ],
+   "domain": "股东与持股"
+  },
+  "cgfx_jgzc_hy_ggzcmx": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_jgzc_hy_ggzcmx",
+   "ctl": 45,
+   "params": [
+    "881151",
+    "2026-09-30",
+    "3",
+    "zcbl",
+    1,
+    1
+   ],
+   "domain": "股东与持股"
+  },
+  "cgfx_jgzc_hy_xxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_jgzc_hy_xxq",
+   "ctl": 42,
+   "params": [
+    "881151",
+    "2026-09-30",
+    "3"
+   ],
+   "domain": "股东与持股"
+  },
+  "cgfx_jgzc_hyzc": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_jgzc_hyzc",
+   "ctl": 40,
+   "params": [
+    "1",
+    "2026-09-30",
+    1,
+    "szbh",
+    1
+   ],
+   "domain": "股东与持股"
+  },
+  "gzzc_hyfx_hyfxsy_yjhy": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyfx_hyfxsy_yjhy",
+   "ctl": 47,
+   "params": [],
+   "domain": "估值"
+  },
+  "gzzc_hyfx_hyfxsy_zhysj": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyfx_hyfxsy_zhysj",
+   "ctl": 48,
+   "params": [
+    "X10",
+    "N006",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_hyxq_czx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyxq_czx",
+   "ctl": 39,
+   "params": [
+    "881344"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_hyxq_hytj": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyxq_hytj",
+   "ctl": 40,
+   "params": [
+    "881344",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_hyxq_scbx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_hyxq_scbx",
+   "ctl": 40,
+   "params": [
+    "881344"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_sy_hybx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_sy_hybx",
+   "ctl": 38,
+   "params": [
+    1,
+    0,
+    1
+   ],
+   "domain": "估值"
+  },
+  "gzzc_sy_ztms": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_sy_ztms",
+   "ctl": 38,
+   "params": [
+    "PE"
+   ],
+   "domain": "估值"
+  },
+  "jgnc": {
+   "cmd": "CWServ.ph_tdxdatacenter_jgnc",
+   "ctl": 30,
+   "params": [
+    "00101",
+    1,
+    0
+   ],
+   "domain": "其他"
+  },
+  "tdxrb_hypm_ag": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hypm_ag",
+   "ctl": 39,
+   "params": [
+    "003",
+    "X10",
+    ""
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_hypm_hk": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hypm_hk",
+   "ctl": 39,
+   "params": {
+    "Params": [
+     "001",
+     "01211",
+     "31"
+    ]
+   },
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_hypm_usa": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_hypm_usa",
+   "ctl": 40,
+   "params": {
+    "Params": [
+     "001",
+     "AMD",
+     "74"
+    ]
+   },
+   "domain": "龙虎榜与两融"
+  },
+  "zttz_xqy": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_xqy",
+   "ctl": 34,
+   "params": {
+    "Params": [
+     "00301",
+     "880703",
+     "2"
+    ]
+   },
+   "domain": "其他"
+  },
+  "zttz_xqy_v2_qsid": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_xqy_v2_qsid",
+   "ctl": 42,
+   "params": {
+    "Params": [
+     "00501",
+     "880703",
+     "1",
+     "101",
+     "2"
+    ]
+   },
+   "domain": "其他"
+  },
+  "zttz_xzcfg": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_xzcfg",
+   "ctl": 36,
+   "params": [
+    "001",
+    "",
+    "",
+    1
+   ],
+   "domain": "其他"
+  },
+  "zttz_ztld": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_ztld",
+   "ctl": 35,
+   "params": [
+    "002",
+    "1088",
+    "0",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "zttz_zy": {
+   "cmd": "CWServ.ph_tdxdatacenter_zttz_zy",
+   "ctl": 33,
+   "params": [
+    "00301",
+    "",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "ztzt": {
+   "cmd": "CWServ.ph_tdxdatacenter_ztzt",
+   "ctl": 30,
+   "params": [
+    "2026-10-08",
+    "0",
+    3
+   ],
+   "domain": "其他"
+  },
+  "bjszt": {
+   "cmd": "CWServ.ph_zt_bjszt",
+   "ctl": 20,
+   "params": [
+    "001",
+    "0",
+    "0",
+    "0"
+   ],
+   "domain": "涨停与题材"
+  },
+  "hsgtzt": {
+   "cmd": "CWServ.ph_zt_hsgtzt",
+   "ctl": 21,
+   "params": [
+    "hybd_lgt_hyph_h",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_ggtgg": {
+   "cmd": "CWServ.ph_zt_hsgtzt_ggtgg",
+   "ctl": 27,
+   "params": [
+    "00401",
+    "",
+    "",
+    "",
+    "",
+    0
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_v3_bdbd": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_bdbd",
+   "ctl": 29,
+   "params": [
+    "007",
+    1,
+    20
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_v3_bsjj_gg": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_bsjj_gg",
+   "ctl": 32,
+   "params": [
+    "20261016"
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_v3_bsjj_zj": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_bsjj_zj",
+   "ctl": 32,
+   "params": [],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_v3_hyzb": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_hyzb",
+   "ctl": 29,
+   "params": [
+    "2",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "hsgtzt_v3_nxjj_zj": {
+   "cmd": "CWServ.ph_zt_hsgtzt_v3_nxjj_zj",
+   "ctl": 32,
+   "params": [
+    "003",
+    1,
+    1
+   ],
+   "domain": "沪深港通"
+  },
+  "rzrq_che": {
+   "cmd": "CWServ.ph_zt_kp_rzrq_che",
+   "ctl": 26,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "rzrq_mre": {
+   "cmd": "CWServ.ph_zt_kp_rzrq_mre",
+   "ctl": 26,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_cmfb": {
+   "cmd": "CWServ.ph_zt_kp_sy_cmfb",
+   "ctl": 25,
+   "params": [
+    "1"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_gppk": {
+   "cmd": "CWServ.ph_zt_kp_sy_gppk",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_jgdy": {
+   "cmd": "CWServ.ph_zt_kp_sy_jgdy",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_qsjg": {
+   "cmd": "CWServ.ph_zt_kp_sy_qsjg",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_scfx": {
+   "cmd": "CWServ.ph_zt_kp_sy_scfx",
+   "ctl": 25,
+   "params": [],
+   "domain": "市场统计"
+  },
+  "sy_tjcb": {
+   "cmd": "CWServ.ph_zt_kp_sy_tjcb",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_tztp": {
+   "cmd": "CWServ.ph_zt_kp_sy_tztp",
+   "ctl": 25,
+   "params": [
+    "1"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_ybzx": {
+   "cmd": "CWServ.ph_zt_kp_sy_ybzx",
+   "ctl": 25,
+   "params": [
+    "2"
+   ],
+   "domain": "涨停与题材"
+  },
+  "sy_yjyg": {
+   "cmd": "CWServ.ph_zt_kp_sy_yjyg",
+   "ctl": 25,
+   "params": [
+    "3"
+   ],
+   "domain": "涨停与题材"
+  },
+  "xgb_bfx": {
+   "cmd": "CWServ.ph_zt_kp_xgb_bfx",
+   "ctl": 25,
+   "params": [
+    "003",
+    ""
+   ],
+   "domain": "涨停与题材"
+  },
+  "xgb_kxt": {
+   "cmd": "CWServ.ph_zt_kp_xgb_kxt",
+   "ctl": 25,
+   "params": [
+    "002",
+    "",
+    "",
+    "1"
+   ],
+   "domain": "涨停与题材"
+  },
+  "xgb_txx": {
+   "cmd": "CWServ.ph_zt_kp_xgb_txx",
+   "ctl": 25,
+   "params": [
+    "002",
+    "5"
+   ],
+   "domain": "涨停与题材"
+  },
+  "zjlx": {
+   "cmd": "CWServ.ph_zt_kp_zjlx",
+   "ctl": 22,
+   "params": [
+    "00201"
+   ],
+   "domain": "资金与筹码"
+  },
+  "tlsq_dzyd": {
+   "cmd": "CWServ.ph_zt_tlsq_dzyd",
+   "ctl": 24,
+   "params": [
+    "00205",
+    "",
+    "",
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_fmxw": {
+   "cmd": "CWServ.ph_zt_tlsq_fmxw",
+   "ctl": 24,
+   "params": [
+    "00204",
+    1,
+    ""
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_gdjc": {
+   "cmd": "CWServ.ph_zt_tlsq_gdjc",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "",
+    "",
+    1
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_knst": {
+   "cmd": "CWServ.ph_zt_tlsq_knst",
+   "ctl": 24,
+   "params": [
+    "00101",
+    1
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_ladc": {
+   "cmd": "CWServ.ph_zt_tlsq_ladc",
+   "ctl": 24,
+   "params": [
+    "00102",
+    0,
+    1,
+    20
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_lryd": {
+   "cmd": "CWServ.ph_zt_tlsq_lryd",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "",
+    "",
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_lryd_20": {
+   "cmd": "CWServ.ph_zt_tlsq_lryd_20",
+   "ctl": 27,
+   "params": [
+    "00203",
+    "",
+    "",
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_tplq": {
+   "cmd": "CWServ.ph_zt_tlsq_tplq",
+   "ctl": 24,
+   "params": [
+    "00103",
+    "@code@",
+    "",
+    1
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_xsjj": {
+   "cmd": "CWServ.ph_zt_tlsq_xsjj",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "1",
+    "",
+    "",
+    "",
+    0,
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "tlsq_yjbl": {
+   "cmd": "CWServ.ph_zt_tlsq_yjbl",
+   "ctl": 24,
+   "params": [
+    "00101",
+    "",
+    0,
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "xg_xgjx": {
+   "cmd": "CWServ.ph_zt_xg_xgjx",
+   "ctl": 22,
+   "params": [
+    "001",
+    "n002"
+   ],
+   "domain": "新股与再融资"
+  },
+  "xg_xgkzz": {
+   "cmd": "CWServ.ph_zt_xg_xgkzz",
+   "ctl": 23,
+   "params": [
+    "001",
+    "30"
+   ],
+   "domain": "新股与再融资"
+  },
+  "xg_xgsg": {
+   "cmd": "CWServ.ph_zt_xg_xgsg",
+   "ctl": 22,
+   "params": [
+    "sgxx"
+   ],
+   "domain": "新股与再融资"
+  },
+  "xg_xgsh": {
+   "cmd": "CWServ.ph_zt_xg_xgsh",
+   "ctl": 22,
+   "params": [
+    "chart",
+    "--",
+    "--",
+    1,
+    2
+   ],
+   "domain": "新股与再融资"
+  },
+  "zjlx_cxlclr": {
+   "cmd": "CWServ.ph_zt_zjlx_cxlclr",
+   "ctl": 26,
+   "params": [
+    "00301",
+    "",
+    30,
+    0,
+    0
+   ],
+   "domain": "资金与筹码"
+  },
+  "zjlx_sy_zjjd": {
+   "cmd": "CWServ.ph_zt_zjlx_sy_zjjd",
+   "ctl": 27,
+   "params": [
+    3,
+    1
+   ],
+   "domain": "资金与筹码"
+  },
+  "zttz_jhqz": {
+   "cmd": "DataAggregation.zttz_jhqz",
+   "ctl": 27,
+   "params": [
+    "00401",
+    "",
+    10
+   ],
+   "domain": "其他"
+  },
+  "zttz_xzgn2": {
+   "cmd": "DataAggregation.zttz_xzgn2",
+   "ctl": 28,
+   "params": [
+    "01001",
+    "",
+    1
+   ],
+   "domain": "其他"
+  },
+  "jjs_hsgtzt_v3_bsjj_bk": {
+   "cmd": "JJSServ.ph_datacenter_jjs_hsgtzt_v3_bsjj_bk",
+   "ctl": 45,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ],
+   "domain": "沪深港通"
+  },
+  "bxzj_sy_bkbd": {
+   "cmd": "JJSServ.ph_zt_bxzj_sy_bkbd",
+   "ctl": 28,
+   "params": [
+    "00100",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "板块与行业"
+  },
+  "bxzj_sy_ggbd": {
+   "cmd": "JJSServ.ph_zt_bxzj_sy_ggbd",
+   "ctl": 28,
+   "params": [
+    "00101",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "bxzj_sy_jgbd": {
+   "cmd": "JJSServ.ph_zt_bxzj_sy_jgbd",
+   "ctl": 28,
+   "params": [
+    "00100",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "涨停与题材"
+  },
+  "hscnjj": {
+   "cmd": "CWServ.app_keyboard_hscnjj",
+   "ctl": 28,
+   "params": [
+    "001",
+    "",
+    10
+   ],
+   "domain": "其他"
+  },
+  "agf10_jj": {
+   "cmd": "CWServ.ph_agf10_jj",
+   "ctl": 20,
+   "params": [
+    "00701",
+    "600303",
+    "2026-09-30",
+    "N006",
+    "1",
+    "",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "jj_cgtj": {
+   "cmd": "CWServ.ph_agf10_jj_cgtj",
+   "ctl": 25,
+   "params": [
+    "001",
+    "600303",
+    ""
+   ],
+   "domain": "基金与ETF"
+  },
+  "dyjjyxf": {
+   "cmd": "CWServ.ph_datacenter_hg_dyjjyxf",
+   "ctl": 33,
+   "params": [
+    "001",
+    "",
+    "",
+    "1",
+    "20"
+   ],
+   "domain": "宏观"
+  },
+  "gyjj": {
+   "cmd": "CWServ.ph_datacenter_hg_gyjj",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "1",
+    "5"
+   ],
+   "domain": "宏观"
+  },
+  "gmjjyjy": {
+   "cmd": "CWServ.ph_datacenter_mghg_gmjjyjy",
+   "ctl": 35,
+   "params": [
+    "001",
+    "",
+    "5",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "zx_dstx": {
+   "cmd": "CWServ.ph_agf10_zx_dstx",
+   "ctl": 25,
+   "params": [
+    "920091",
+    "dstx_gg_check",
+    "1"
+   ],
+   "domain": "资讯与AI"
+  },
+  "zxts": {
+   "cmd": "CWServ.ph_agf10_zxts",
+   "ctl": 22,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zxts2": {
+   "cmd": "CWServ.ph_agf10_zxts2",
+   "ctl": 23,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zxts3": {
+   "cmd": "CWServ.ph_agf10_zxts3",
+   "ctl": 23,
+   "params": [
+    "00501",
+    "@code@",
+    "",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zxts4": {
+   "cmd": "CWServ.ph_agf10_zxts4",
+   "ctl": 23,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zxts5": {
+   "cmd": "CWServ.ph_agf10_zxts5",
+   "ctl": 23,
+   "params": [
+    "00101",
+    "@code@",
+    0
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zxts_yjpl": {
+   "cmd": "CWServ.ph_agf10_zxts_yjpl",
+   "ctl": 27,
+   "params": [
+    "003",
+    "920091",
+    ""
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zdsl": {
+   "cmd": "CWServ.ph_bigdata_xtld_zdsl",
+   "ctl": 29,
+   "params": [
+    "30",
+    "@code@",
+    "1",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "zdzq": {
+   "cmd": "CWServ.ph_bigdata_xtld_zdzq",
+   "ctl": 29,
+   "params": [
+    "688318",
+    "1",
+    "20260608",
+    "20261020"
+   ],
+   "domain": "其他"
+  },
+  "cjzx": {
+   "cmd": "CWServ.ph_content_cjzx",
+   "ctl": 24,
+   "params": [
+    "801",
+    "20756567",
+    "",
+    "0"
+   ],
+   "domain": "资讯与AI"
+  },
+  "lzzdscj": {
+   "cmd": "CWServ.ph_hkdatacenter_wlnx_lzzdscj",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "#dateTime#"
+   ],
+   "domain": "沪深港通"
+  },
+  "gzdb": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_ggxq_gzdb",
+   "ctl": 40,
+   "params": [
+    "603439",
+    "1",
+    "603439"
+   ],
+   "domain": "估值"
+  },
+  "tjcb_gzdb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_gzdb",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "dstx_list": {
+   "cmd": "CWServ.ph_zx_dstx",
+   "ctl": 19,
+   "params": [
+    "600303_AG",
+    "dstx_gg_list",
+    "1"
+   ],
+   "domain": "资讯与AI"
+  },
+  "dstx_gg": {
+   "cmd": "CWServ.phf10_zx_dstx",
+   "ctl": 22,
+   "params": [
+    "@code@",
+    "dstx_gg",
+    ""
+   ],
+   "domain": "资讯与AI"
+  },
+  "dghg_gdp": {
+   "cmd": "CWServ.ph_datacenter_dghg_gdp",
+   "ctl": 31,
+   "params": [
+    "001",
+    "gdp",
+    "20",
+    "-1"
+   ],
+   "domain": "宏观"
+  },
+  "dghg_jy": {
+   "cmd": "CWServ.ph_datacenter_dghg_jy",
+   "ctl": 30,
+   "params": [
+    "001",
+    "01,02,03",
+    "20",
+    "-1"
+   ],
+   "domain": "宏观"
+  },
+  "dghg_wm": {
+   "cmd": "CWServ.ph_datacenter_dghg_wm",
+   "ctl": 30,
+   "params": [
+    "001",
+    "01,02,03,04",
+    "20",
+    "-1"
+   ],
+   "domain": "宏观"
+  },
+  "hg_gdp": {
+   "cmd": "CWServ.ph_datacenter_hg_gdp",
+   "ctl": 29,
+   "params": [
+    "001",
+    "",
+    "",
+    "0",
+    "10"
+   ],
+   "domain": "宏观"
+  },
+  "hg_jmsh": {
+   "cmd": "CWServ.ph_datacenter_hg_jmsh",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "hg_jybz": {
+   "cmd": "CWServ.ph_datacenter_hg_jybz",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "5"
+   ],
+   "domain": "宏观"
+  },
+  "hg_nysc": {
+   "cmd": "CWServ.ph_datacenter_hg_nysc",
+   "ctl": 30,
+   "params": [
+    "001",
+    "1",
+    "1",
+    "5"
+   ],
+   "domain": "宏观"
+  },
+  "hg_tz": {
+   "cmd": "CWServ.ph_datacenter_hg_tz",
+   "ctl": 28,
+   "params": [
+    "001",
+    "",
+    "1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "hg_wjzs": {
+   "cmd": "CWServ.ph_datacenter_hg_wjzs",
+   "ctl": 30,
+   "params": [
+    "001",
+    "",
+    "0",
+    "20"
+   ],
+   "domain": "宏观"
+  },
+  "mghg_cz": {
+   "cmd": "CWServ.ph_datacenter_mghg_cz",
+   "ctl": 30,
+   "params": [
+    "002",
+    "1",
+    "-1",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "mghg_hbzc": {
+   "cmd": "CWServ.ph_datacenter_mghg_hbzc",
+   "ctl": 32,
+   "params": [
+    "001",
+    "",
+    "0",
+    "0"
+   ],
+   "domain": "宏观"
+  },
+  "mghg_mlc": {
+   "cmd": "CWServ.ph_datacenter_mghg_mlc",
+   "ctl": 31,
+   "params": [
+    "001",
+    "",
+    "5",
+    "1"
+   ],
+   "domain": "宏观"
+  },
+  "xjphg_hgjq": {
+   "cmd": "CWServ.ph_datacenter_xjphg_hgjq",
+   "ctl": 33,
+   "params": [
+    "001",
+    "gdp",
+    "-1",
+    "-1"
+   ],
+   "domain": "宏观"
+  },
+  "bgcz_hghb": {
+   "cmd": "CWServ.ph_tdxdatacenter_bgcz_hghb",
+   "ctl": 35,
+   "params": [
+    "00101",
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "kb_ag": {
+   "cmd": "CWServ.app_keyboard_ag",
+   "ctl": 24,
+   "params": [
+    "{{searchText}}",
+    "10"
+   ],
+   "domain": "其他"
+  },
+  "agf10_zj": {
+   "cmd": "CWServ.ph_agf10_zj",
+   "ctl": 20,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "sczb": {
+   "cmd": "CWServ.ph_cfg_fx_sczb",
+   "ctl": 23,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "rddh": {
+   "cmd": "CWServ.ph_cfg_rd_rddh",
+   "ctl": 23,
+   "params": [
+    "4",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tqmf": {
+   "cmd": "CWServ.ph_cfg_sc_rdzz_tqmf",
+   "ctl": 28,
+   "params": [
+    "1",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "mkzj": {
+   "cmd": "CWServ.ph_hkdatacenter_mkzj",
+   "ctl": 29,
+   "params": [
+    "00201",
+    60,
+    1,
+    0,
+    0
+   ],
+   "domain": "沪深港通"
+  },
+  "dzzx": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_dzzx",
+   "ctl": 35,
+   "params": [
+    "001",
+    1,
+    3
+   ],
+   "domain": "大宗交易"
+  },
+  "dzjy_ss": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_ss",
+   "ctl": 33,
+   "params": [
+    "002",
+    "",
+    10
+   ],
+   "domain": "大宗交易"
+  },
+  "dzjy_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_sy",
+   "ctl": 33,
+   "params": [
+    "003",
+    "2026-10-23",
+    "N006",
+    "1",
+    1,
+    20
+   ],
+   "domain": "大宗交易"
+  },
+  "dzjy_yxsb": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_yxsb",
+   "ctl": 35,
+   "params": [
+    "001",
+    "",
+    "",
+    0,
+    0
+   ],
+   "domain": "大宗交易"
+  },
+  "dzjy_zlfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_dzjy_zlfx",
+   "ctl": 35,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "大宗交易"
+  },
+  "syzjzcbxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_syfx_syzjzcbxq",
+   "ctl": 40,
+   "params": [
+    "00101",
+    "",
+    "",
+    0,
+    ""
+   ],
+   "domain": "其他"
+  },
+  "ggzj": {
+   "cmd": "CWServ.ph_tdxdatacenter_zpfxb_ggzj",
+   "ctl": 36,
+   "params": [
+    "001",
+    5,
+    "2026-10-20",
+    0
+   ],
+   "domain": "资金与筹码"
+  },
+  "dxb": {
+   "cmd": "CWServ.phzzfw_dxb",
+   "ctl": 19,
+   "params": [
+    "00101",
+    2,
+    "",
+    0
+   ],
+   "domain": "其他"
+  },
+  "tsyb": {
+   "cmd": "CWServ.phzzfw_tsyb",
+   "ctl": 20,
+   "params": [
+    "00101",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "hq_nlp_zjlx": {
+   "cmd": "HQServ.hq_nlp_zjlx",
+   "ctl": 20,
+   "params": [
+    {
+     "ReqId": "200803",
+     "Market": "0",
+     "Type": "1",
+     "Page": "1",
+     "PageSize": "20",
+     "Sort": "10",
+     "Desc": "1",
+     "modname": "mod_zjlx"
+    }
+   ],
+   "domain": "行情"
+  },
+  "slb_ggsy": {
+   "cmd": "CWServ.ph_datacenter_slb_ggsy",
+   "ctl": 31,
+   "params": [
+    "00502",
+    "",
+    "",
+    0,
+    0
+   ],
+   "domain": "其他"
+  },
+  "xgrl": {
+   "cmd": "CWServ.ph_gg_xgrl",
+   "ctl": 19,
+   "params": [
+    "00101",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "aitc": {
+   "cmd": "CWServ.ph_tdxdatacenter_aitc",
+   "ctl": 30,
+   "params": [
+    "sct",
+    "",
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "domain": "其他"
+  },
+  "bgcz_gsbg": {
+   "cmd": "CWServ.ph_tdxdatacenter_bgcz_gsbg",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    "1",
+    1,
+    0
+   ],
+   "domain": "F10与个股资料"
+  },
+  "bgcz_zccz": {
+   "cmd": "CWServ.ph_tdxdatacenter_bgcz_zccz",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "",
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "cb_yjgg": {
+   "cmd": "CWServ.ph_tdxdatacenter_cb_yjgg",
+   "ctl": 33,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    1,
+    1
+   ],
+   "domain": "财报"
+  },
+  "cb_yjkb": {
+   "cmd": "CWServ.ph_tdxdatacenter_cb_yjkb",
+   "ctl": 33,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    1,
+    1
+   ],
+   "domain": "财报"
+  },
+  "cb_yjpd": {
+   "cmd": "CWServ.ph_tdxdatacenter_cb_yjpd",
+   "ctl": 33,
+   "params": [
+    "00301",
+    "",
+    ""
+   ],
+   "domain": "财报"
+  },
+  "cb_yjpd_xqy": {
+   "cmd": "CWServ.ph_tdxdatacenter_cb_yjpd_xqy",
+   "ctl": 37,
+   "params": [
+    "00102",
+    "",
+    1,
+    "2026-06-30"
+   ],
+   "domain": "财报"
+  },
+  "cb_yjyg": {
+   "cmd": "CWServ.ph_tdxdatacenter_cb_yjyg",
+   "ctl": 33,
+   "params": [
+    "001",
+    "",
+    "",
+    "",
+    1,
+    1
+   ],
+   "domain": "财报"
+  },
+  "cyl_clyzxsy": {
+   "cmd": "CWServ.ph_tdxdatacenter_cyl_clyzxsy",
+   "ctl": 37,
+   "params": [],
+   "domain": "资金与筹码"
+  },
+  "cylv2_ag_cyljs": {
+   "cmd": "CWServ.ph_tdxdatacenter_cylv2_ag_cyljs",
+   "ctl": 40,
+   "params": [
+    "001",
+    "CYL00128"
+   ],
+   "domain": "资金与筹码"
+  },
+  "cylv2_ag_cysj": {
+   "cmd": "CWServ.ph_tdxdatacenter_cylv2_ag_cysj",
+   "ctl": 39,
+   "params": [
+    "001",
+    "CYL00128",
+    "",
+    "",
+    ""
+   ],
+   "domain": "资金与筹码"
+  },
+  "cylv2_ag_qjt": {
+   "cmd": "CWServ.ph_tdxdatacenter_cylv2_ag_qjt",
+   "ctl": 38,
+   "params": [
+    "002",
+    "CYL00128",
+    "0"
+   ],
+   "domain": "资金与筹码"
+  },
+  "cylv2_qb_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_cylv2_qb_sy",
+   "ctl": 37,
+   "params": [
+    "001",
+    ""
+   ],
+   "domain": "资金与筹码"
+  },
+  "ggrbxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_ggrbxq",
+   "ctl": 32,
+   "params": [
+    "001",
+    "",
+    "@code@",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "ggxc_ggxcmx": {
+   "cmd": "CWServ.ph_tdxdatacenter_ggxc_ggxcmx",
+   "ctl": 37,
+   "params": [
+    "00102",
+    "300662",
+    "2022"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "ggxc_ggxctj": {
+   "cmd": "CWServ.ph_tdxdatacenter_ggxc_ggxctj",
+   "ctl": 37,
+   "params": [
+    "00201",
+    "4",
+    "",
+    "",
+    "1",
+    "1"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "ggxc_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_ggxc_sy",
+   "ctl": 33,
+   "params": [
+    "00101"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gscb_qzfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_qzfx",
+   "ctl": 35,
+   "params": [
+    "00104",
+    1
+   ],
+   "domain": "财报"
+  },
+  "gscb_stms": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_stms",
+   "ctl": 35,
+   "params": [
+    "00101",
+    1
+   ],
+   "domain": "财报"
+  },
+  "gscb_yjdq": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_yjdq",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    "",
+    1
+   ],
+   "domain": "财报"
+  },
+  "gscb_zzms": {
+   "cmd": "CWServ.ph_tdxdatacenter_gscb_zzms",
+   "ctl": 35,
+   "params": [
+    "00103",
+    1
+   ],
+   "domain": "财报"
+  },
+  "gszl_gglz": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_gglz",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    5,
+    1,
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_gsbg": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_gsbg",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    1,
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_gstz": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_gstz",
+   "ctl": 35,
+   "params": [
+    "00104",
+    "",
+    "",
+    "",
+    6,
+    1,
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_gszl": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_gszl",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "",
+    "",
+    "",
+    6,
+    1,
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_ryjg": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_ryjg",
+   "ctl": 35,
+   "params": [
+    "00201",
+    "",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_ryxl": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_ryxl",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    "",
+    "",
+    0,
+    0,
+    0
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_swjy": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_swjy",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "",
+    "",
+    "",
+    "5",
+    "1",
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gszl_zxjy": {
+   "cmd": "CWServ.ph_tdxdatacenter_gszl_zxjy",
+   "ctl": 35,
+   "params": [
+    "00302",
+    "",
+    "",
+    "",
+    "4",
+    "1",
+    1
+   ],
+   "domain": "F10与个股资料"
+  },
+  "gzzc_gg": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_gg",
+   "ctl": 33,
+   "params": [
+    "0",
+    "4",
+    1,
+    1
+   ],
+   "domain": "估值"
+  },
+  "gzzc_ggxq_ylpm": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_ggxq_ylpm",
+   "ctl": 40,
+   "params": [
+    "603439",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_sy_ggbx": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_sy_ggbx",
+   "ctl": 38,
+   "params": {
+    "Params": [
+     "1",
+     "0",
+     "1",
+     "1"
+    ]
+   },
+   "domain": "估值"
+  },
+  "gzzc_zsgz": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsgz",
+   "ctl": 35,
+   "params": [
+    "行业",
+    "N005",
+    0
+   ],
+   "domain": "估值"
+  },
+  "gzzc_zsxq_gzzs": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsxq_gzzs",
+   "ctl": 40,
+   "params": [
+    "000110",
+    "000001",
+    "3Y",
+    "PE"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_zsxq_hq_jdzf": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsxq_hq_jdzf",
+   "ctl": 43,
+   "params": [
+    "000110"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_zsxq_lshc": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsxq_lshc",
+   "ctl": 40,
+   "params": [
+    "000110",
+    "1"
+   ],
+   "domain": "估值"
+  },
+  "gzzc_zsxq_zxgg": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsxq_zxgg",
+   "ctl": 40,
+   "params": [
+    "000110",
+    1
+   ],
+   "domain": "估值"
+  },
+  "jgpj_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_jgpj_sy",
+   "ctl": 33,
+   "params": [
+    "00101"
+   ],
+   "domain": "其他"
+  },
+  "syfx_ggsy": {
+   "cmd": "CWServ.ph_tdxdatacenter_syfx_ggsy",
+   "ctl": 35,
+   "params": [
+    "00101"
+   ],
+   "domain": "其他"
+  },
+  "tdxrb_block": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_block",
+   "ctl": 37,
+   "params": [
+    "001"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_gscb": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_gscb",
+   "ctl": 36,
+   "params": [],
+   "domain": "财报"
+  },
+  "tdxrb_gzb_stock": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_gzb_stock",
+   "ctl": 41,
+   "params": {
+    "Params": [
+     "001",
+     "0",
+     "1",
+     "600487"
+    ]
+   },
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_kzz": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_kzz",
+   "ctl": 35,
+   "params": [],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_qh": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_qh",
+   "ctl": 34,
+   "params": [],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_rdfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_rdfx",
+   "ctl": 36,
+   "params": [
+    "003",
+    "1",
+    "600303"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_rqb_stock": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_rqb_stock",
+   "ctl": 41,
+   "params": [
+    "001",
+    "0",
+    "0",
+    "002242"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_rsb_stock": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_rsb_stock",
+   "ctl": 41,
+   "params": {
+    "Params": [
+     "001",
+     "0",
+     "1",
+     "600487"
+    ]
+   },
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_tjcb_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_tjcb_sy",
+   "ctl": 39,
+   "params": [
+    "10"
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tdxrb_zxg": {
+   "cmd": "CWServ.ph_tdxdatacenter_tdxrb_zxg",
+   "ctl": 35,
+   "params": [
+    "002",
+    "#SelfStock#",
+    1,
+    20
+   ],
+   "domain": "龙虎榜与两融"
+  },
+  "tfp_v2_gg": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_gg",
+   "ctl": 35,
+   "params": [
+    "00103",
+    "0",
+    "0",
+    "",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_ggxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_ggxq",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "03774",
+    "31",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tjcb_cwfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_cwfx",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "tjcb_gdqk": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_gdqk",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "tjcb_gsds": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_gsds",
+   "ctl": 35,
+   "params": [
+    "00102",
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "tjcb_scbx": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_scbx",
+   "ctl": 35,
+   "params": [
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "tjcb_yjgl": {
+   "cmd": "CWServ.ph_tdxdatacenter_tjcb_yjgl",
+   "ctl": 35,
+   "params": [
+    "00101",
+    "@code@",
+    "#date#"
+   ],
+   "domain": "其他"
+  },
+  "ybzx_xq_gg": {
+   "cmd": "CWServ.ph_tdxdatacenter_ybzx_xq_gg",
+   "ctl": 36,
+   "params": [
+    "00101",
+    "920091",
+    "2",
+    0
+   ],
+   "domain": "其他"
+  },
+  "zpfxb_ggzsph": {
+   "cmd": "CWServ.ph_tdxdatacenter_zpfxb_ggzsph",
+   "ctl": 38,
+   "params": [
+    "001",
+    "1",
+    "2026-10-20"
+   ],
+   "domain": "资金与筹码"
+  },
+  "queryCardInfo": {
+   "cmd": "DataAggregation.queryCardInfo",
+   "ctl": 30,
+   "params": [
+    {
+     "stockCode": "920091",
+     "cardId": "RISK_POINT_CARD"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryCardInfoStrategy": {
+   "cmd": "DataAggregation.queryCardInfoStrategy",
+   "ctl": 39,
+   "params": [
+    {
+     "title": "强势",
+     "strategyType": "2",
+     "currentPage": "1",
+     "pageSize": "2"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryCyl": {
+   "cmd": "DataAggregation.queryCyl",
+   "ctl": 25,
+   "params": [
+    {
+     "CylSize": "4",
+     "ZlSize": "3"
+    }
+   ],
+   "domain": "资金与筹码"
+  },
+  "queryGggz": {
+   "cmd": "DataAggregation.queryGggz",
+   "ctl": 26,
+   "params": [
+    {
+     "cardNum": "3"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryKxdz": {
+   "cmd": "DataAggregation.queryKxdz",
+   "ctl": 27,
+   "params": [
+    {
+     "queryType": "1",
+     "cycleTime": "0",
+     "currentPage": "1",
+     "pageSize": "4"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryMarketSentiment": {
+   "cmd": "DataAggregation.queryMarketSentiment",
+   "ctl": 38,
+   "params": [
+    {}
+   ],
+   "domain": "市场统计"
+  },
+  "queryMessageCardInfo": {
+   "cmd": "DataAggregation.queryMessageCardInfo",
+   "ctl": 38,
+   "params": [
+    {
+     "cardId": "CHASE_MONEY_CARD",
+     "num": 10
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryRandom": {
+   "cmd": "DataAggregation.queryRandom",
+   "ctl": 29,
+   "params": [
+    {
+     "cardId": "1",
+     "sumSize": "10",
+     "ranSize": "2"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryTechInfo": {
+   "cmd": "DataAggregation.queryTechInfo",
+   "ctl": 31,
+   "params": [
+    {
+     "stockCode": "920091"
+    }
+   ],
+   "domain": "其他"
+  },
+  "queryZST": {
+   "cmd": "DataAggregation.queryZST",
+   "ctl": 26,
+   "params": [
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "queryZbsq": {
+   "cmd": "DataAggregation.queryZbsq",
+   "ctl": 27,
+   "params": [
+    {
+     "labelId": "12"
+    }
+   ],
+   "domain": "其他"
+  },
+  "rdjd": {
+   "cmd": "DataAggregation.rdjd",
+   "ctl": 22,
+   "params": [
+    {
+     "flag": "001",
+     "page": "1",
+     "pageSize": "20",
+     "sortNum": "rq",
+     "sortType": "1",
+     "type1": "",
+     "type2": ""
+    }
+   ],
+   "domain": "其他"
+  },
+  "sy_tp": {
+   "cmd": "DataAggregation.sy_tp",
+   "ctl": 23,
+   "params": [
+    {
+     "page": "1"
+    }
+   ],
+   "domain": "其他"
+  },
+  "wlnx_nxjhfb": {
+   "cmd": "CWServ.ph_hkdatacenter_wlnx_nxjhfb",
+   "ctl": 36,
+   "params": [
+    "00102",
+    "HSI",
+    "2026-10-23",
+    0,
+    0
+   ],
+   "domain": "沪深港通"
+  },
+  "xwss": {
+   "cmd": "CWServ.ph_hkdatacenter_xwss",
+   "ctl": 29,
+   "params": [
+    "00101",
+    "阿"
+   ],
+   "domain": "沪深港通"
+  },
+  "hjcb": {
+   "cmd": "CWServ.ph_hq_hjcb",
+   "ctl": 19,
+   "params": [
+    "1"
+   ],
+   "domain": "行情"
+  },
+  "dbl_qsxt": {
+   "cmd": "CWServ.ph_pcwebcall_dbl_qsxt",
+   "ctl": 30,
+   "params": [
+    "001",
+    "920091"
+   ],
+   "domain": "其他"
+  },
+  "hjhq": {
+   "cmd": "CWServ.ph_tdxdatacenter_hjhq",
+   "ctl": 30,
+   "params": [
+    "00102",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "hzkx": {
+   "cmd": "CWServ.ph_tdxdatacenter_hzkx",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "",
+    "",
+    "@code@"
+   ],
+   "domain": "其他"
+  },
+  "mtcsm_htss": {
+   "cmd": "CWServ.ph_tdxdatacenter_mtcsm_htss",
+   "ctl": 36,
+   "params": [
+    "00101",
+    "",
+    10
+   ],
+   "domain": "其他"
+  },
+  "mtcsm_sy": {
+   "cmd": "CWServ.ph_tdxdatacenter_mtcsm_sy",
+   "ctl": 34,
+   "params": [
+    "00101",
+    "",
+    1
+   ],
+   "domain": "其他"
+  },
+  "qh_cdzl": {
+   "cmd": "CWServ.ph_tdxdatacenter_qh_cdzl",
+   "ctl": 33,
+   "params": [
+    "001",
+    "20",
+    "",
+    "",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "slb": {
+   "cmd": "CWServ.ph_tdxdatacenter_slb",
+   "ctl": 29,
+   "params": [
+    "sct",
+    "",
+    1,
+    0,
+    0,
+    0
+   ],
+   "domain": "其他"
+  },
+  "sq_dkb": {
+   "cmd": "CWServ.ph_tdxdatacenter_sq_dkb",
+   "ctl": 32,
+   "params": [
+    "003",
+    "",
+    "1",
+    "100"
+   ],
+   "domain": "其他"
+  },
+  "syfx_sytj": {
+   "cmd": "CWServ.ph_tdxdatacenter_syfx_sytj",
+   "ctl": 35,
+   "params": [
+    "00101",
+    ""
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_kzz": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_kzz",
+   "ctl": 36,
+   "params": [
+    "00103",
+    "0",
+    "0",
+    "",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_kzzxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_kzzxq",
+   "ctl": 38,
+   "params": [
+    "00101",
+    "127027",
+    "0",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "sc_xgrl": {
+   "cmd": "CWServ.phsj_sc_xgrl",
+   "ctl": 21,
+   "params": [
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "glbk": {
+   "cmd": "CWServ.app_gmg_glbk",
+   "ctl": 21,
+   "params": [
+    "00101",
+    "5"
+   ],
+   "domain": "其他"
+  },
+  "zxgzb": {
+   "cmd": "CWServ.mzx_zxgzb",
+   "ctl": 18,
+   "params": [
+    "00101",
+    "@code@"
+   ],
+   "domain": "其他"
+  },
+  "code_to_id": {
+   "cmd": "CWServ.ph_agf10_code_to_id",
+   "ctl": 28,
+   "params": [
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "jysj": {
+   "cmd": "CWServ.ph_agf10_jysj",
+   "ctl": 22,
+   "params": [
+    "00101",
+    "@code@",
+    "0",
+    "0"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "sl_v2": {
+   "cmd": "CWServ.ph_agf10_sl_v2",
+   "ctl": 23,
+   "params": [
+    "00201",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "zp": {
+   "cmd": "CWServ.ph_agf10_zp",
+   "ctl": 20,
+   "params": [
+    "00104",
+    "@code@"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "rgfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_rgfx",
+   "ctl": 30,
+   "params": [
+    "00101",
+    "",
+    "",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "zp_v2": {
+   "cmd": "CWServ.ph_agf10_zp",
+   "ctl": 20,
+   "params": [
+    "00103",
+    "920091"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "cyq64": {
+   "cmd": "HQServ.hq_nlp_app_cyq64",
+   "ctl": 25,
+   "params": [
+    {
+     "ReqId": "60000",
+     "TypeOne": "0",
+     "TypeTwo": "0",
+     "modname": "mod_cyq64.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "hundred_high": {
+   "cmd": "HQServ.hq_nlp_app_hundred_high",
+   "ctl": 32,
+   "params": [
+    {
+     "ReqId": "2044",
+     "date": "20261023",
+     "trend_type": "1",
+     "statistics_type": "0",
+     "page": "1",
+     "data_num": "99",
+     "all_add": "0",
+     "sort_type": "1",
+     "sort_index": "zdf",
+     "modname": "mod_hundred_day_high.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "app_misc": {
+   "cmd": "HQServ.hq_nlp_app_misc",
+   "ctl": 24,
+   "params": [
+    {
+     "ReqId": "201011",
+     "Market": "0",
+     "blockstyle": "3",
+     "Page": "0",
+     "PageSize": "100",
+     "Sort": "1",
+     "Desc": "0",
+     "modname": "module_misc.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "zbhc": {
+   "cmd": "HQServ.hq_nlp_app_zbhc",
+   "ctl": 24,
+   "params": [
+    {
+     "ReqId": "200915",
+     "PoolId": "2001",
+     "InDate": "",
+     "MinZf": "",
+     "Top": "2",
+     "modname": "mod_zbhc.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "cgfx_bgq": {
+   "cmd": "CWServ.ph_tdxdatacenter_cgfx_bgq",
+   "ctl": 34,
+   "params": [],
+   "domain": "股东与持股"
+  },
+  "rl": {
+   "cmd": "CWServ.ph_tdxdatacenter_rl",
+   "ctl": 28,
+   "params": [
+    "2026-10-20"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2",
+   "ctl": 32,
+   "params": [
+    "00101",
+    "0",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_agxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_agxq",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "002731",
+    "0",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_bg": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_bg",
+   "ctl": 35,
+   "params": [
+    "00103",
+    "0",
+    "0",
+    "",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_bgxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_bgxq",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "200488",
+    "0",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_gz": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_gz",
+   "ctl": 35,
+   "params": [
+    "00103",
+    "0",
+    "0",
+    "",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_gzxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_gzxq",
+   "ctl": 37,
+   "params": [
+    "00101",
+    "836033",
+    "44",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "tfp_v2_tfptj": {
+   "cmd": "CWServ.ph_tdxdatacenter_tfp_v2_tfptj",
+   "ctl": 38,
+   "params": [
+    "00102",
+    "",
+    "0",
+    "0",
+    "0"
+   ],
+   "domain": "其他"
+  },
+  "xgb": {
+   "cmd": "CWServ.ph_tdxdatacenter_xgb",
+   "ctl": 29,
+   "params": [
+    "00103",
+    "-1"
+   ],
+   "domain": "其他"
+  },
+  "zpfxb_qsgfx": {
+   "cmd": "CWServ.ph_tdxdatacenter_zpfxb_qsgfx",
+   "ctl": 37,
+   "params": [
+    "001",
+    "1",
+    "2026-10-20"
+   ],
+   "domain": "资金与筹码"
+  },
+  "fn_jyr_v3": {
+   "cmd": "CWServ.sys_fn_jyr_v3",
+   "ctl": 22,
+   "params": {},
+   "domain": "其他"
+  },
+  "fn_sczhjk": {
+   "cmd": "CWServ.sys_fn_sczhjk",
+   "ctl": 22,
+   "params": [
+    "600303",
+    "1"
+   ],
+   "domain": "其他"
+  },
+  "filedown": {
+   "cmd": "CWServ.tzx_filedown",
+   "ctl": 21,
+   "params": {
+    "filename": "bi/list/func_zqbg103_1.jsn",
+    "format": "1"
+   },
+   "domain": "其他"
+  },
+  "zx_tsyb": {
+   "cmd": "CWServ.ph_agf10_zx_tsyb",
+   "ctl": 25,
+   "params": [
+    "600303"
+   ],
+   "domain": "F10与个股资料"
+  },
+  "xfetfjj_v2": {
+   "cmd": "CWServ.ph_jjzt_etfjj_xfetfjj_v2",
+   "ctl": 33,
+   "params": [
+    "510300"
+   ],
+   "domain": "基金与ETF"
+  },
+  "ymdb": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_ggxq_ymdb",
+   "ctl": 40,
+   "params": [
+    "603439"
+   ],
+   "domain": "估值"
+  },
+  "zsxq_xgjj": {
+   "cmd": "CWServ.ph_tdxdatacenter_gzzc_zsxq_xgjj",
+   "ctl": 40,
+   "params": [
+    "000300",
+    1,
+    "N003",
+    1
+   ],
+   "domain": "估值"
+  },
+  "hsgt_agxq": {
+   "cmd": "CWServ.ph_tdxdatacenter_hsgt_v3_agxq",
+   "ctl": 38,
+   "params": [
+    "@code@",
+    "1",
+    1,
+    5
+   ],
+   "domain": "沪深港通"
+  },
+  "lhqc": {
+   "cmd": "CWServ.ph_zt_lhb_sy_lhqc",
+   "ctl": 26,
+   "params": [
+    "2026-10-23",
+    2
+   ],
+   "domain": "龙虎榜与两融"
+  }
+ },
+ "pb_products": {
+  "pb_appupdate": {
+   "cmd": "AppUpdateInfo.queryAppUpdateInfo",
+   "ctl": 34,
+   "params": [
+    {
+     "appName": "tdx-card-cyl",
+     "deviceName": "GPhone_Standard",
+     "clientVer": "7.27",
+     "curPkgName": "",
+     "curPkgVer": "",
+     "curPkgMD5Cache": "",
+     "curPkgMD5": "",
+     "machineInfo": "4;192.168.0.104;Redmi;;;;;14;117.147.45.243,0;;;;GPhone_Standard;7.27;2026-08-06 15:15 2.02.76;@ec0:QcR0FDq2vJinPkrZFY5kG2RuclyFpjV4ovL6Xjwvo5ChK/sVmUhLpdm/M9jUQSlG;f4f652dbff48aa10;;;;10736;Redmi_22122RK93C_34_14;;;;"
+    }
+   ],
+   "domain": "其他"
+  },
+  "pb_tdx_pv": {
+   "cmd": "CWSearch.tdx_pv",
+   "ctl": 17,
+   "params": {
+    "action": "pv_add",
+    "ns": "pv:find",
+    "id": "scjd_100093"
+   },
+   "domain": "其他"
+  },
+  "pb_rcache": {
+   "cmd": "CWSearch.tzx_rcache",
+   "ctl": 21,
+   "params": {
+    "action": "get",
+    "key": "gg:012_tfp",
+    "page": "1",
+    "size": "3",
+    "qsid": "999"
+   },
+   "domain": "其他"
+  },
+  "pb_combhq": {
+   "cmd": "HQServ.CombHQ",
+   "ctl": 15,
+   "params": "{\"WantCol\":[\"CLOSE\",\"NOW\"],\"Secu\":[{\"Code\":\"880731\",\"Setcode\":\"1\"},{\"Code\":\"880971\",\"Setcode\":\"1\"},{\"Code\":\"880544\",\"Setcode\":\"1\"},{\"Code\":\"880705\",\"Setcode\":\"1\"},{\"Code\":\"880750\",\"Setcode\":\"1\"}]}",
+   "domain": "行情"
+  },
+  "pb_pbfxt": {
+   "cmd": "HQServ.PBFXT",
+   "ctl": 14,
+   "params": "Base64:CgsKBVVURi04IgAoABIGNjg4MzE4GAEgBCgAMAA4eEABSABYAGAA",
+   "domain": "行情"
+  },
+  "pb_pbmultihq": {
+   "cmd": "HQServ.PBMultiHQ",
+   "ctl": 18,
+   "params": "Base64:CgIoABIDTk9XEgVDTE9TRRIETkFNRRIHVkFSMDQwNBIERkxBRxIIQkVMT05HSFkaACAGKA4w////////////ATgUQAFIAWABaAA=",
+   "domain": "行情"
+  },
+  "pb_pathfile": {
+   "cmd": "HQServ.PBPathFile",
+   "ctl": 19,
+   "params": "{\"Head\":{\"Target\":0},\"Pos\":0,\"Len\":12000,\"PathFile\":\"aiyx/920091.json\"}",
+   "domain": "行情"
+  },
+  "pb_pbzst": {
+   "cmd": "HQServ.PBZST",
+   "ctl": 14,
+   "params": "Base64:CggKBFVURjgoABIGODgwODg1GAEgACgAMAA=",
+   "domain": "行情"
+  },
+  "pb_zstdde": {
+   "cmd": "HQServ.PBZSTDDE",
+   "ctl": 17,
+   "params": "{\"Head\":{\"Target\":0},\"Code\":\"880001\",\"Setcode\":\"1\",\"Type\":0}",
+   "domain": "行情"
+  },
+  "pb_zst": {
+   "cmd": "HQServ.ZST",
+   "ctl": 12,
+   "params": "{\"Code\":\"HSI\",\"Setcode\":27,\"HasAttachInfo\":1,\"Period\":\"\",\"Date\":\"20261023\",\"ExHQFlag\":1}",
+   "domain": "行情"
+  },
+  "pb_hq_nlp": {
+   "cmd": "HQServ.hq_nlp",
+   "ctl": 15,
+   "params": [
+    {
+     "ReqId": "1997",
+     "DataTime": "90000",
+     "modname": "mod_hsgt.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_copilot": {
+   "cmd": "HQServ.hq_nlp_copilot",
+   "ctl": 23,
+   "params": [
+    {
+     "ReqId": "200773",
+     "themeType": "0",
+     "dataType": "1",
+     "dataNum": "1",
+     "dataDate": "2",
+     "modname": "mod_copilot.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_factor": {
+   "cmd": "HQServ.hq_nlp_factor",
+   "ctl": 22,
+   "params": [
+    {
+     "ReqId": "200626",
+     "sortType": "1",
+     "desc": "0",
+     "Page": "0",
+     "PageSize": "1",
+     "modname": "mod_Factor.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_index_indicator": {
+   "cmd": "HQServ.hq_nlp_index_indicator",
+   "ctl": 31,
+   "params": [
+    {
+     "ReqId": "3000",
+     "Date": "0",
+     "Code": "000001",
+     "SetCode": "1",
+     "Cycle": "10",
+     "modname": "mod_index_indicator.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_indexselect": {
+   "cmd": "HQServ.hq_nlp_indexselect",
+   "ctl": 27,
+   "params": [
+    {
+     "ReqId": "200504",
+     "Type": "1",
+     "Page": "0",
+     "PageSize": "2",
+     "modname": "mod_indexselect.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_mdsi": {
+   "cmd": "HQServ.hq_nlp_mdsi",
+   "ctl": 20,
+   "params": [
+    {
+     "ReqId": "500111",
+     "DataDate": "0",
+     "Type": "0",
+     "MarketType": "0",
+     "SortType": "2",
+     "SortIndex": "2",
+     "modname": "mod_mdsi.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_misc": {
+   "cmd": "HQServ.hq_nlp_misc",
+   "ctl": 20,
+   "params": [
+    {
+     "ReqId": "200800",
+     "Code": [
+      "600303"
+     ],
+     "Setcode": [
+      "#setcode#"
+     ],
+     "Page": "0",
+     "PageSize": "2",
+     "Sort": "3",
+     "Desc": "0",
+     "modname": "module_misc.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_peg": {
+   "cmd": "HQServ.hq_nlp_peg",
+   "ctl": 19,
+   "params": [
+    {
+     "ReqId": "200353",
+     "blockcode": "",
+     "SortType": "3",
+     "Desc": "1",
+     "timetype": "1",
+     "during": "中",
+     "name": "十月",
+     "value_up": "0",
+     "value_down": "0",
+     "Page": "0",
+     "PageSize": "3",
+     "modname": "mod_peg.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_similar": {
+   "cmd": "HQServ.hq_nlp_similar",
+   "ctl": 23,
+   "params": [
+    {
+     "ReqId": "201930",
+     "MarketDomain": "0",
+     "MatchKCnt": "20",
+     "DataTpye": "0",
+     "WeightPrice": "100",
+     "WeightVol": "0",
+     "WeightZdf": "0",
+     "WeightKLine": "0",
+     "WeightMA": "0",
+     "Match": "80",
+     "TQType": "1",
+     "FilterType": "0",
+     "modname": "mod_similar"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_xg": {
+   "cmd": "HQServ.hq_nlp_xg",
+   "ctl": 18,
+   "params": [
+    {
+     "ReqId": "200506",
+     "Date": 0,
+     "Page": "0",
+     "PageSize": "30"
+    }
+   ],
+   "domain": "行情"
+  },
+  "pb_tcihq": {
+   "cmd": "HQServ.hq_nlp_tcihq",
+   "ctl": 21,
+   "params": [
+    {
+     "ReqId": "200730",
+     "pxzd": 4,
+     "px": 1,
+     "Page": 1,
+     "PageSize": 20,
+     "modname": "mod_tcihq.dll"
+    }
+   ],
+   "domain": "行情"
+  },
+  "cwsearch": {
+   "cmd": "CWSearch.search",
+   "ctl": 17,
+   "params": {
+    "page": "0",
+    "size": "20",
+    "name": "tdxdzxsearch",
+    "source_table": "tb_gg_abg tb_gg_bjs",
+    "s_issue_date": "2024-10-22",
+    "e_issue_date": "2026-10-23",
+    "typecode": "",
+    "security_trade_market": "012001 012002 012015 012029 012046",
+    "check_flag": "1",
+    "sort": "issue_date"
+   },
+   "domain": "其他"
+  },
+  "bklist_v2": {
+   "cmd": "JNLPSE.bkList",
+   "ctl": 15,
+   "params": [
+    {
+     "subType": "0",
+     "cycle": "0",
+     "occurTime": "2026-10-20",
+     "lastDay": "1"
+    }
+   ],
+   "domain": "板块与行业"
+  },
+  "expand_list": {
+   "cmd": "JNLPSE.expandList",
+   "ctl": 19,
+   "params": [
+    {
+     "categoryType": "2"
+    }
+   ],
+   "domain": "其他"
+  },
+  "card_type": {
+   "cmd": "JNLPSE.getCardType",
+   "ctl": 20,
+   "params": [
+    {
+     "sceneType": "1"
+    }
+   ],
+   "domain": "其他"
+  },
+  "hot_ques": {
+   "cmd": "JNLPSE.getHotQues",
+   "ctl": 19,
+   "params": [
+    {
+     "currentPage": "1",
+     "pageSize": "4"
+    }
+   ],
+   "domain": "其他"
+  },
+  "strategy_detail": {
+   "cmd": "JNLPSE.getStrategyDetail",
+   "ctl": 26,
+   "params": [
+    {
+     "strategyName": "主力活动,boll线突破中轨,底部特征,双底启动,资金持续流入,集合竞价有异动,主力有拉升迹象,强势突破年线,绩优股反弹,回马枪,好友反攻,上涨会合线,三兵进军,短线超卖,蜻蜓点水,上升三法,双针探底,射击之星,底部反转,弱市捡钱包"
+    }
+   ],
+   "domain": "其他"
+  },
+  "title": {
+   "cmd": "JNLPSE.getTitile",
+   "ctl": 18,
+   "params": [
+    {
+     "sceneType": "1",
+     "phCard": "17"
+    }
+   ],
+   "domain": "其他"
+  },
+  "hot_list_card": {
+   "cmd": "JNLPSE.hotListCard",
+   "ctl": 19,
+   "params": [
+    {
+     "pageNo": "1",
+     "pageSize": "3"
+    }
+   ],
+   "domain": "其他"
+  },
+  "hot_stock_des": {
+   "cmd": "JNLPSE.hotStockDetailDes",
+   "ctl": 26,
+   "params": [
+    {
+     "market": "2",
+     "stockCode": "920091",
+     "categoryType": "0",
+     "listType": "0"
+    }
+   ],
+   "domain": "其他"
+  },
+  "result_get": {
+   "cmd": "JNLPSE.resultGet",
+   "ctl": 18,
+   "params": [
+    {
+     "strategyName": "A股本月涨幅榜",
+     "pageSize": "20",
+     "currentPage": "1"
+    }
+   ],
+   "domain": "其他"
+  },
+  "yesterday_list": {
+   "cmd": "JNLPSE.yesterdayList",
+   "ctl": 22,
+   "params": [
+    {
+     "occurTime": "2026-10-20"
+    }
+   ],
+   "domain": "其他"
+  },
+  "hot_ques_v2": {
+   "cmd": "JNLPSE:getHotQues",
+   "ctl": 19,
+   "params": [
+    {
+     "currentPage": "1",
+     "pageSize": "20"
+    }
+   ],
+   "domain": "其他"
+  },
+  "hot_strategy": {
+   "cmd": "JNLPSE:hotStrategy",
+   "ctl": 20,
+   "params": [
+    {
+     "limit": "3"
+    }
+   ],
+   "domain": "其他"
+  },
+  "result_get_v2": {
+   "cmd": "JNLPSE:resultGet",
+   "ctl": 18,
+   "params": [
+    {
+     "currentPage": "1",
+     "pageSize": "10",
+     "strategyName": "心动选股"
+    }
+   ],
+   "domain": "其他"
+  },
+  "wenda": {
+   "cmd": "JNLPSE:wendaQuery",
+   "ctl": 19,
+   "params": [
+    {
+     "message": "涨幅,半导体,最新价,换手率",
+     "rang": "AG",
+     "pageNo": "1",
+     "pageSize": "5",
+     "order_field": "chg",
+     "occurTime": "2026-10-20",
+     "removeDate": "1"
+    }
+   ],
+   "domain": "其他"
+  }
+ }
+}

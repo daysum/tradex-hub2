@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>AI金融智能决策中台</strong><br/>
-  AKShare 封装 · eltdx 通达信协议 · astock_signals 信号模块 · 量化计算引擎 · SmartRouter 全量路由 · 本地 MCP Server · 130 个工具
+  AKShare 封装 · eltdx 通达信协议 · tdxdata 数据中心 · astock_signals 信号模块 · 量化计算引擎 · SmartRouter 全量路由 · 本地 MCP Server · 146 个工具
 </p>
 
 <p align="center">
@@ -10,8 +10,8 @@
   <img src="https://img.shields.io/badge/MCP-1.0-green.svg" alt="MCP"/>
   <img src="https://img.shields.io/badge/License-Apache--2.0-yellow.svg" alt="License"/>
   <img src="https://img.shields.io/badge/Data-A股-red.svg" alt="Data Scope"/>
-  <img src="https://img.shields.io/badge/Tools-130-orange.svg" alt="MCP Tools"/>
-  <img src="https://img.shields.io/badge/Version-3.3.18-blue.svg" alt="Version"/>
+  <img src="https://img.shields.io/badge/Tools-146-orange.svg" alt="MCP Tools"/>
+  <img src="https://img.shields.io/badge/Version-3.6.0-blue.svg" alt="Version"/>
 </p>
 
 ---
@@ -20,14 +20,15 @@
 
 为 AI Agent（WorkBuddy / Claude Code / Cursor）提供 **A 股金融数据 + 量化计算 + 决策支持的 MCP 接口**。
 
-**三层能力模型**（130 个工具）：
-- **L1 数据获取层**：通过 SmartRouter 统一获取数据（行情/财务/估值/行业/新闻/宏观/涨停板/龙虎榜/五档盘口/逐笔/分时/题材/短线指标等），其中 eltdx 通达信协议 32 个工具
-- **L2 计算引擎层**（8个工具）：技术指标计算6个、绩效指标计算2个
+**三层能力模型**（146 个工具）：
+- **L1 数据获取层**：通过 SmartRouter 统一获取数据（行情/财务/估值/行业/新闻/宏观/涨停板/龙虎榜/五档盘口/逐笔/分时/题材/短线指标等），其中 eltdx 通达信协议 32 个工具；另有 tdxdata 数据中心 15 个工具
+- **L2 计算引擎层**（9个工具）：技术指标计算6个、风险指标计算1个、绩效指标计算2个
 - **L3 决策支持层**（16个工具）：交易信号生成3个、多因子分析2个、条件选股2个、系统诊断5个、综合分析3个、技术分析引擎1个
 
-**数据源架构（v3.3.18）**：
-- **data_sources 数据源层**：78 个数据类型，102 个数据源注册（37 种源），按封禁风险分三梯队
+**数据源架构（v3.6.0）**：
+- **data_sources 数据源层**：79 个数据类型，108 个数据源注册（38 种源），按封禁风险分三梯队
 - **SmartRouter 全量覆盖**：L1 工具通过 `SmartRouter.route()` 统一获取数据，自动健康评分/降级/故障隔离
+- **tdxdata 0.3.0（v3.4.0+ Phase 1/2/3）**：vendored 于 `tradex/src/tdxdata`，通达信手机版 7615，纯标准库零依赖；421 个数据中心产品 + 实时/历史涨跌家数 + 板块/概念成分股 + 市场统计；单命令约 2.2s 节流，定位为低频/按需查询。Phase 2/3 起同时作为 `market_breadth`(100) / `historical_kline`(300) / `minute_data`(300) / `finance_report`(100) / `today_ticks`(100) 的备源。
 - **eltdx 3.2.2**：行情类第一主源，32 个工具覆盖五档盘口/集合竞价/逐笔/F10/分时/K线/全景档案/短线指标/题材/分类行情等；新增常驻连接管理器 `eltdx_stream.py`（游标增量轮询实现准实时五档盘口）。3.x 为 Rust 重写内核（native wheel，cp310-abi3）
 - **数据源梯队**：第一梯队（eltdx/腾讯/本地 vipdoc，不封 IP）+ 第二梯队（同花顺/新浪/巨潮/财联社，低风险）+ 第三梯队（东财 push2/push2ex/slist，仅独有数据 + 限流防封）
 - **数据源看板**：`python -m tradex.dashboard`（端口 8765），可视化查看数据源健康/路由/工具分布；MCP 工具 `get_data_source_dashboard` 可在 Agent 对话中查询
@@ -44,7 +45,7 @@
 
 > **数据源优先级**：第一梯队（eltdx/腾讯/本地，不封 IP）优先用，第二梯队（同花顺/新浪/巨潮）低风险，第三梯队（东财）仅用于独有数据 + 限流防封（间隔 ≥1s + 随机抖动）。
 
-## MCP 工具清单（130 个）
+## MCP 工具清单（146 个）
 
 ### 1. 公司信息（4 个）— `company_info`
 
@@ -209,7 +210,7 @@
 | `eltdx_get_special_limits_scan` | 扫描全市场特殊涨跌停 |
 | `eltdx_get_capital_changes` | 股本变动历史 |
 
-### 11. 技术指标计算（6 个）— `technical_indicators` 🆕 V2.5.0
+### 11. 技术指标 / 风险指标计算（7 个）— `technical_indicators` 🆕 V2.5.0 / v3.4.0
 
 纯函数实现，输入价格数组，输出与 Excel/通达信一致的指标值。
 
@@ -221,6 +222,7 @@
 | `calculate_rsi` | RSI 相对强弱指数 | Wilder 平滑法；RSI=100-100/(1+平均涨幅/平均跌幅) |
 | `calculate_boll` | BOLL 布林带 | 中轨=SMA；上下轨=中轨±k*std；带宽+ Percent B |
 | `calculate_atr` | ATR 平均真实波幅 | TR=max(H-L,\|H-前C\|,\|L-前C\|)；ATR=EMA(TR) |
+| `calculate_risk_metrics` 🆕 | HV/动量/夏普/最大回撤/Beta | 基于 vendored `tdxdata.indicator`（纯标准库，无网络） |
 
 ### 12. 绩效指标计算（2 个）— `performance_metrics` 🆕 V2.5.0
 
@@ -288,6 +290,35 @@
 | `get_local_kline` | 通达信本地日线（离线，最新到上一交易日收盘） |
 | `get_local_minute` | 通达信本地分钟线（离线，需通达信已下载分钟线） |
 
+### 20. tdxdata 数据中心（15 个）— `tdxdata_data` + `tdxdata_deep` 🆕 v3.4.0/v3.6.0
+
+接入 vendored [tdxdata](https://github.com/liu1561089752/tdxdata)（通达信手机版 7615，
+纯标准库零依赖）的**数据中心产品与独有截面数据**。⚠️ 上游单命令约 **2.2 秒节流**、按来源 IP 限流，
+这些工具适合低频/按需查询，不适合高频轮询。
+
+| 工具名 | 功能 |
+|--------|------|
+| `tdx_list_products` | 421 个数据中心产品目录（不联网；按域/关键词过滤） |
+| `tdx_get_product` | 按产品名取数（支持 `params` 覆盖模板；52 个产品有标准列义） |
+| `tdx_get_market_breadth` | **实时**涨跌家数（涨/跌/平/涨停/跌停） |
+| `tdx_get_breadth_history` | 历史广度序列（880005 涨跌家数 / 880006 停板 / 880866、880641 新低） |
+| `tdx_get_intraday_samples` | 多代码当日分时点位（实验性，仅指数 999999 实证） |
+| `tdx_get_boards` | 板块清单（行业一/二/三级、概念、风格、地区） |
+| `tdx_get_board_members` | **概念板块**成分股（含入选理由/纳入日期） |
+| `tdx_get_market_stat` | 市场统计（涨跌停家数近 30 日 / 行业涨跌 / 情绪） |
+| `tdx_get_price_limits` | 个股涨停价/跌停价（主板/双创/北交所/ST 规则） |
+| `tdx_status` | tdxdata 集成状态/节流统计/最近调用（不联网） |
+| `tdx_get_f10` 🆕 | 结构化 F10（22 个 section：公司概况/经营分析/股东/题材/评分卡等） |
+| `tdx_get_finance` 🆕 | 结构化财务报表（9 类：资产负债/利润/现金流/主要指标等） |
+| `tdx_get_capital_flow_rank` 🆕 | 全市场主力净流入榜（上游固定前 20；不支持单代码） |
+| `tdx_get_lhb_review` 🆕 | 龙虎榜复盘 `lhfp`：日期/上榜数/净额（N003 为 TDX 口径；N004-N006 保留 raw 不猜） |
+| `tdx_get_lhb_stocks` 🆕 | 龙虎榜个股明细：`view=list` 全量（lhbsj）/ `view=detail` 前20（lhzy），含净买占比/标签/概念 |
+
+> 前 10 个工具在 `tdxdata_data.py`，后 5 个深水区工具在 `tdxdata_deep.py`。
+> 常用产品速查见 `docs/tdxdata-products.md`；完整产品目录请调用 `tdx_list_products`。
+> 数据源层备源接入（`historical_kline` / `minute_data` / `market_breadth` /
+> `finance_report` / `today_ticks`）在 Phase 2/3。
+
 ---
 
 ## 安装
@@ -307,12 +338,13 @@ source venv/bin/activate  # Linux/Mac
 # 或 venv\Scripts\activate  # Windows
 ```
 
-### 3. 安装 astock_signals 独立包（v1.1.0）
+### 3. astock_signals（v3.3.10+ 已并入本仓，可跳过）
 
-astock_signals 已从 tradex-hub 独立成包，需先安装：
+astock_signals 自 v3.3.10 起已并入 `tradex/src/astock_signals/`，随 tradex 一起安装，
+**无需单独安装**。仅在使用 v3.3.9 及更早版本时才需要：
 
 ```bash
-pip install -e astock_signals/
+pip install -e astock_signals/   # 旧版本步骤，v3.3.10+ 不需要
 ```
 
 > 或从 GitHub 克隆：`git clone https://github.com/wolfjkd/astock_signals.git && pip install -e astock_signals/`
@@ -353,7 +385,7 @@ python -m tradex --http --allowed-hosts '*'    # 仅可信内网：关闭 Host �
 |------|------|------|
 | `POST /mcp` | **Streamable HTTP** | MCP 2025 新标准传输，Dify / LangChain / Claude 远程客户端首选 |
 | `GET /sse` + `POST /messages/` | legacy SSE | 旧客户端兼容（MCP 官方已标 deprecated，保留过渡） |
-| `GET /health` | HTTP | 健康检查：`{"status":"ok","service":"tradex-mcp","version":"3.3.30","tools":130}`，轻量探活不触发数据源网络 |
+| `GET /health` | HTTP | 健康检查：`{"status":"ok","service":"tradex-mcp","version":"3.6.0","tools":146}`，轻量探活不触发数据源网络 |
 
 **Dify / LangChain 配置示例**（Streamable HTTP）：
 
@@ -418,6 +450,10 @@ AI 会调用 `mcp__tradex__eltdx_get_kline`，返回 100 根日 K 线。
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+| v3.6.0 | 2026-10-30 | **龙虎榜列义映射**：新增 `tdx_get_lhb_review`（`lhfp`）与 `tdx_get_lhb_stocks`（`lhzy`/`lhbsj` 个股明细）。`lhfp`：N001→date、N002→listed_count（与东财逐日去重股票数连续 5 日一致）、N003→net_amount_yuan（TDX 口径）；`lhzy`/`lhbsj`：code/name/market/price/change_pct/amount/net_buy/ratio/tag/concepts 均逐股核对东财。未证实列保留 raw；工具 144→146，新增 6 项测试，全量离线 999 passed |
+| v3.5.0 | 2026-10-30 | **Phase 3 深水区**：新增 3 个结构化 tdxdata 工具 —— `tdx_get_f10`（22 sections）/ `tdx_get_finance`（9 类财报）/ `tdx_get_capital_flow_rank`（全市场主力净流入榜，固定前 20）；工具 141→144；仅接 tdxdata 已有标准字段的接口，raw 产品继续走 `tdx_get_product` 不猜列义；新增 7 项测试，全量离线 993 passed |
+| v3.4.1 | 2026-10-30 | **K 组修复：eltdx `historical_kline` 真正支持 `start_date`/`end_date`/`adjust`**。此前日期范围与复权参数被 `**kwargs` 吞掉，`get_historical_price` 只返回最近 100 根且不复权；现按日期范围分页回溯（最多 6400 根）、日期优先于 count、超出历史显式报错；新增 6 条回归测试，全量离线 986 passed |
+| v3.4.0 | 2026-10-30 | **tdxdata 0.3.0 接入（Phase 0~3）**：vendored 通达信手机版 7615（纯标准库零依赖），421 个数据中心产品；新增 10 个 tdxdata MCP 工具 + 1 个 L2 风险指标工具（工具 130→141）；注册 5 个备源 `market_breadth(100)` / `historical_kline(300)` / `minute_data(300)` / `finance_report(100)` / `today_ticks(100)`；数据源 103→108；严格周期/复权映射（`quarter`→`season`，年线/3 分钟抛错，未知值不回落）；K 线 12 列与 akshare 对齐、换手率恒 null；`dividend_financing` 因 tdxdata `get_xdxr` 语义不符**故意不接**；真实源级冒烟 8/8，全量离线测试全绿 |
 | v3.3.30 | 2026-09-26 | **分钟 K 线全线打通 + 消灭两个「静默错数据」缺陷**。① **`period="5m"` 静默返回日线（P0）**：eltdx 拒绝分钟周期 → 降级 akshare → 东财参数 `_EM_KLT.get(period,"101")` 落默认值 101=**日K**，调用方拿到 1498 根日线且**零告警**；修法两处缺一不可 —— 主源 `_normalize_period` 支持分钟 + 备源新增 `_norm_klt()` 未识别周期**直接抛错**（并把分钟 klt `1/5/15/30/60` 补全，东财原生支持分钟）。② **`period="1m"` 返回月线（P0）**：两个源别名表都写 `"1m": "month"`，而 `full_kline` 不归一化 → 同一参数名在两个工具语义相反。③ **BREAKING**：`1m` 统一改为「1 分钟」（对齐 eltdx 官方口径），月线改用 `1mo`/`month`，短别名 `m` 仍兼容月线。④ `adjusted_kline` 分钟复权硬失败（独占源无备源）→ 放开。⑤ `full_kline` `max_pages` 默认 30 过紧（1 分钟全量约 28 页）→ 放宽到 200 并暴露 `adjust`/`page_size`。⑥ 新增 `eltdx_get_security_codes` 的 `kind`（stock/a_share/etf/index/st/suspended，实测北交所股票 350 只 vs 全品种 385 条）与 `eltdx_get_recent_minutes`（0x0feb）。工具 129→130，数据源 102→103，数据类型 78→79。新增 105 条测试；tradex/tests 146 passed、仓库 tests 729 passed |
 | v3.3.29 | 2026-09-20 | **修复 `board_industry_hist_em`（行业历史行情）—— `industry_data` 7 个 endpoint 至此全部有可用源，B 组清零**。东财板块日K路由整条链路故障（所有 `push2his*` 连接被拒；`push2delay` 认得出板块但 `klines` 为空），akshare 主源 + ths 备源都不覆盖 → **换数据来源**：实测**同花顺板块K线免鉴权可用**（`d.10jqka.com.cn/v6/line/bk_{code}/{seg}/last.js`，`01`=日K/`11`=周K/`21`=月K，行业代码 `881xxx`）。实现放在 `ths_fetchers`（10jqka 传输归它管）。降级顺序刻意「**同花顺优先 → 东财兜底**」：东财放前面会先跑昂贵的 BK 解析再失败（首调 **24s** 超时），同花顺 **1.5s**。新增 22 条测试，测试 770 passed |
 | v3.3.28 | 2026-09-20 | **修复 `board_industry_cons_em`（行业板块成分股）**，`get_industry_stocks` / `get_competitors` 从恒失败变为正常。此前该 endpoint **两个源都不覆盖**（akshare 打 `29.push2` 被拒连 + ths 明确不支持）→ 改本项目直连（`push2delay` 的 clist 经 `em_get` 走镜像可取到）。排查中揪出 **akshare 原版两个隐藏缺陷**：① **只搜行业板块、漏了概念板块** —— `白酒`/`新能源车` 只存在于概念板块，而调用方 docstring 明确把它们列为合法输入；② **板块列表只取第一页** —— 服务端把 `pz` 硬顶在 100，而行业 496 / 概念 504 个，靠后的名字被误判为不存在。本实现两类板块都检索 + 翻页 + **可断点续取的缓存**（首次 ~10s → 之后 ~1.1s）；字段改**按名映射**（akshare 按位置依赖响应 key 顺序 + `reset_index` 插入列）。路由超时单独放宽 40s（与 `fund_hold` 做法一致）。新增 16 条测试，测试 748 passed |

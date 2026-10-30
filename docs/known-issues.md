@@ -486,6 +486,88 @@ PY
 
 ---
 
+## J. tdxdata（Phase 1）已知限制
+
+**定位**：tdxdata 是通达信手机版 7615 数据中心，**不是 eltdx 的替代品**。
+它适合低频/按需查询，不适合高频轮询。
+
+| 限制 | 影响 / 处理 |
+|------|-------------|
+| 单命令约 **2.2 秒**匀速节流，限流按来源 IP 计 | 工具可能耗时数秒到十几秒；禁止并发/高频；`tdx_status` 可看 `rate_stats` |
+| 无五档盘口 | 盘口继续用 `eltdx_get_depth` |
+| 逐笔无买卖方向、无笔数、仅当日 | 逐笔继续用 eltdx（有 `side`）；tdxdata 不做逐笔主源 |
+| 无历史逐笔 | 只能当日 |
+| 无 3 分钟/年线 | 不支持；不要用参数默认值兜底 |
+| 无港股/期货/期权/外汇行情 | 这些品种的 K 线/分时/五档拿不到 |
+| 421 个产品中仅 **52 个**有标准列义 | 其余返回 `N001...` 原始列；工具 `column_note` 会提示，不猜列义 |
+| `get_boards("all")` 约 24 秒 | 工具超时放宽到 60s；建议按 kind 查询并缓存 |
+| `get_universe` 全量约 158 秒 | **未**用于 `get_stock_list` 备源 |
+| `get_intraday_samples` 个股未复核 | 标为实验性，仅指数 999999 有实证 |
+| 实时涨跌家数回包无日期 | `provenance.as_of` 恒 `null`，并带 `as_of_note` |
+| 与 eltdx 同属通达信生态 | 对 eltdx 独占类型不构成跨上游备源；对东财/同花顺才是独立备源 |
+
+**Phase 2 备源字段说明**：
+
+- `historical_kline` 的 tdxdata 备源输出 12 列与 akshare 对齐，但 **`换手率` 恒为 `null`**
+  （上游不提供），**首根 `振幅/涨跌幅/涨跌额` 为 `null`**（无前收）；其余行由上一根收盘自算。
+- `minute_data` 输出 `时间/价格/均价/成交量`，只支持当日。
+- `market_breadth` 输出 `上涨/下跌/平盘/涨停/跌停`；回包无日期，`as_of` 恒 `null`。
+- 未知周期/复权一律抛错（年线、3 分钟、`quarter` 以外的写法不会静默回落日线）。
+
+**Phase 3 备源说明**：
+
+- `finance_report`：tdxdata 备源返回**标准英文字段**（`report_period` / `total_assets_yuan` …），
+  与 eltdx 的 T 编码字段不同；工具输出里 `source`/`note` 会标明。
+- `today_ticks`：tdxdata 逐笔**无买卖方向**（`side=unknown`）、无开盘撮合标记；
+  `成交额` 由 `price × 手数 × 100` 推算；**最多 1000 笔/次**（上游约 2.2s/100 笔）。
+- `dividend_financing` **故意不接 tdxdata**：`get_xdxr` 是「IPO/融资累计统计」（1 行），
+  不是逐次分红/除权事件表；接进来会造成语义错配。继续用 eltdx/akshare 分红源。
+
+**Phase 3 深水区（v3.5.0）说明**：
+
+- `tdx_get_f10` / `tdx_get_finance` 只接 tdxdata 已有标准字段的 section/kind；
+  `fhrz` 是 IPO/融资累计统计，**不是**分红事件表。
+- `get_finance(kind="cwfxxq")` 上游多 ResultSet、列义未定 → 抛 `NotSupportedError`，不猜列名。
+- `tdx_get_capital_flow_rank` 只支持全市场排行（上游固定前 20）；单代码资金流用
+  `get_money_flow`；`price` / `net_inflow_pct` 恒 `null`。
+- 龙虎榜/涨停池/解禁等 raw 产品仍未接备源；继续走 `tdx_get_product`，拿到列义证据后再映射。
+- `lhfp` 已做**部分**列义映射：`N001`→date、`N002`→listed_count（与东财逐日去重股票数
+  连续 5 日一致）、`N003`→net_amount_yuan（TDX 口径，与东财汇总不完全一致）；
+  `N004`–`N006` 语义未证实，保留 raw，不猜。
+- `lhzy` / `lhbsj` 个股明细已映射：`code/name/market(0深/1沪/2北)/price/change_pct/
+  amount_yuan/net_buy_amount_yuan/net_buy_ratio_pct/tag/reason_code/date/tags/concepts`；
+  amount/net_buy 与东财 `ACCUM_AMOUNT`/`BILLBOARD_NET_AMT` 逐股核对一致。
+  `reason_code` 是 TDX 内部异动码（未翻译）；需要中文原因用 `get_dragon_tiger`。
+
+**复检**：`python scripts/tdxdata_smoke.py`（默认 7 项，约 30 秒）。
+不要把它并入 `scripts/live_smoke.py` 的默认全量跑（421 产品会跑 15+ 分钟）。
+
+---
+
+## K. eltdx `historical_kline` 忽略日期范围/复权（✅ v3.4.1 已修复）
+
+**状态**：✅ v3.4.1 修复。保留记录，避免重复排查。
+
+- **原现象**：`get_historical_price(symbol="600519", start_date="20261020",
+  end_date="20261024")` 返回最近 **100 根**日线（首行 2026-06-04），而不是指定区间；
+  `adjust="qfq"` 也实际拿到不复权数据。
+- **根因**：`eltdx_fetchers.fetch_historical_kline` 的签名只接
+  `code/symbol/period/count`，日期与复权参数被 `**kwargs` 吞掉，`count` 默认 100。
+- **影响**：日期范围查询、`analysis_engine` / `signal_data_base` 等内部调用
+  （传 `start_date` 但未传 `count`）实际只拿到最近 100 根；回看窗口 >100 根时
+  指标/信号会基于不足的数据计算。
+- **修法（v3.4.1）**：
+  - 真正接收并过滤 `start_date` / `end_date`；
+  - 按日期范围从最新一页向前分页回溯（`bars.get(start=offset)`，最多 8 页 / 6400 根）；
+  - 日期范围优先于 `count`，`count` 只作为下限（避免 live_smoke 通用池 `count=5` 截断区间）；
+  - 真正透传 `adjust` 到 `bars.get(adjust=...)`；
+  - 超出可获取历史时显式抛错，不静默截断。
+- **回归测试**：`tests/test_eltdx_kline_date_range.py`（6 项）。
+- **实测**：`20261020~20261024` 返回 4 行；`2022-01-10` 的 qfq 收盘 1742.99 vs
+  不复权 1966.00，复权参数确实生效。
+
+---
+
 ## 复检方法
 
 ```bash
@@ -511,6 +593,10 @@ python -c "from curl_cffi import requests as r; print(r.get('https://push2.eastm
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-10-30 | v3.6.0 | **龙虎榜列义映射**：`tdx_get_lhb_review`（lhfp）+ `tdx_get_lhb_stocks`（lhzy/lhbsj）。lhfp：N001/N002 有交叉证据，N003 标 TDX 口径，N004–N006 不猜；个股明细的 price/change/amount/net_buy/ratio/market 已逐股核对东财。工具 144→146，全量离线 999 passed |
+| 2026-10-30 | v3.5.0 | **Phase 3 深水区**：新增 `tdx_get_f10`（22 section）/ `tdx_get_finance`（9 类）/ `tdx_get_capital_flow_rank`（固定前 20）；只接标准字段，raw 产品仍走 `tdx_get_product`；工具 141→144，全量离线 993 passed |
+| 2026-10-30 | v3.4.1 | **K 组已修复**：eltdx `historical_kline` 真正支持 `start_date`/`end_date`/`adjust`；日期范围分页回溯、日期优先于 count、超出历史显式报错；新增 6 条回归测试，全量离线 986 passed |
+| 2026-10-30 | v3.4.0 | 新增 **J 组 tdxdata 限制**（2.2s 节流、无五档/方向/历史逐笔、52/421 列义）与 **K 组既有问题**（eltdx `historical_kline` 忽略 `start_date/end_date`，返回最近 100 根，未修）；tdxdata 注册为 `market_breadth`/`historical_kline`/`minute_data`/`finance_report`/`today_ticks` 5 个备源，源级冒烟 8/8；`dividend_financing` 因语义不符故意不接 |
 | 2026-09-26 | v3.3.30 | 新增 **H 组「静默降级 + 参数默认值 → 错数据」**：`5m` 返回日线、`1m` 返回月线两个 P0 缺陷（根因、复现口径、修法与泛化教训）。这类缺陷**不会**被 `live_smoke.py` 判 `FAIL`——所有监控都是绿的。另补 **H-4「新增形参被通用参数池撞中」**（`page_size` 事故）；新增 **I 组「`minutes.recent`(0x0feb) 主站不返回数据」**（上游问题，工具保留不承诺有数据） |
 | 2026-09-22 | — | 新增 **G 组「问财 OpenAPI 网关契约」**（X-Claw-* 头、`app_id` 固定值、响应结构三陷阱）；`wencai_news` 四个叠加缺陷的修复入 F 组；`wencai_query` **出口 IP 被封**的结论入 E 组 |
 | 2026-09-20 | v3.3.21 | 首次建立。基于全量真实网络冒烟（102 源）整理 |

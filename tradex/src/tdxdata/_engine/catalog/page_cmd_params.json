@@ -1,0 +1,2659 @@
+{
+ "CWServ.mzx_zxgzb": [
+  "00101",
+  "#code#"
+ ],
+ "CWServ.ph_hkdatacenter_xwss": [
+  "00101",
+  "阿"
+ ],
+ "CWServ.phzzfw_dxb": [
+  "00104",
+  "20",
+  "#stockDay#",
+  "0"
+ ],
+ "CWServ.ph_agf10_zp_ggld": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_zp": [
+  "00104",
+  "920091"
+ ],
+ "CWServ.ph_agf10_zg_zs": [
+  "zhpf",
+  "920091"
+ ],
+ "CWServ.ph_agf10_zg_scm": [
+  "dyrdztms",
+  "920091",
+  ""
+ ],
+ "CWServ.ph_zt_gbgd_zjc": [
+  "00502",
+  "qb",
+  "@code@",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_ybzx_xq_gg": [
+  "00101",
+  "920091",
+  "2",
+  0
+ ],
+ "CWServ.ph_agf10_code_to_id": [
+  "920091"
+ ],
+ "CWServ.ph_tdxdatacenter_cmfb_ggss": [
+  "2",
+  "920091"
+ ],
+ "CWServ.ph_agf10_zg_jby": [
+  "zhpf",
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_zx_zsgz_gggz": [
+  "00102",
+  "920091",
+  ""
+ ],
+ "CWServ.ph_agf10_cw_zyzbxqy_sy": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_zj": [
+  "920091"
+ ],
+ "JJSServ.ph_zt_bxzj_xq": [
+  "00101",
+  "",
+  "920091",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lrzt_ggrzrqmx": [
+  "00102",
+  "920091",
+  "1"
+ ],
+ "JJSServ.ph_zt_bxzj_ss": [
+  "00101",
+  "920091"
+ ],
+ "CWServ.ph_zt_lhbkp_ggxq": [
+  "00104",
+  "920091",
+  "",
+  ""
+ ],
+ "CWServ.ph_agf10_zg_yq": [
+  "rdzt",
+  "920091"
+ ],
+ "CWServ.ph_agf10_rdtc": [
+  "00102",
+  "920091",
+  "0"
+ ],
+ "CWServ.ph_agf10_zg_jsm": [
+  "jdbxzxt",
+  "920091",
+  "1",
+  "",
+  ""
+ ],
+ "CWServ.ph_ai_sjfx_sgj": [
+  "001",
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_zt_lhbkp_sy": [
+  "00301",
+  ""
+ ],
+ "CWServ.ph_hkdatacenter_wlnx_lzzdscj": [
+  "00101",
+  "#dateTime#"
+ ],
+ "CWServ.ph_hkdatacenter_wlnx_nxjhfb": [
+  "00103",
+  "HSI",
+  "#dateTime#",
+  0,
+  0
+ ],
+ "CWServ.app_gmg_glbk": [
+  "00101",
+  "5"
+ ],
+ "CWServ.ph_hkdatacenter_mkzj": [
+  "00201",
+  60,
+  1,
+  0,
+  0
+ ],
+ "JJSServ.ph_datacenter_jjsph_cyqbgp_cgbh": [
+  "高盛(亚洲)证券有限公司",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_hjhq": [
+  "00102",
+  "",
+  ""
+ ],
+ "CWServ.ph_hq_hjcb": [
+  "1"
+ ],
+ "CWServ.ph_hkdatacenter_wlnx_hyzg": [
+  "00101",
+  "#dateTime#",
+  5,
+  1
+ ],
+ "CWServ.ph_jjzt_jjsc_jjhq": [
+  "003",
+  "100102",
+  "N005",
+  "1",
+  "10",
+  "0"
+ ],
+ "CWServ.ph_zt_kp_sy_ztzb": [
+  "3"
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_zy": [
+  "00301",
+  "",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_xqy": [
+  "00501",
+  "#code#_#setcode#",
+  "3"
+ ],
+ "CWServ.ph_zt_kp_sy_scfx": [],
+ "CWServ.ph_zt_lhb_sy_lhzj": [
+  "00101",
+  "",
+  "0",
+  "",
+  ""
+ ],
+ "CWServ.ph_zt_lhb_sy_zy": [
+  "00105",
+  "-1",
+  "#date#",
+  "6",
+  "1",
+  "1",
+  ""
+ ],
+ "CWServ.ph_zt_kp_sy_cmfb": [
+  "1"
+ ],
+ "CWServ.ph_zt_lhb_sy_lhbyc": [
+  "3"
+ ],
+ "CWServ.ph_zt_kp_sy_gppk": [
+  "3"
+ ],
+ "CWServ.ph_zt_kp_sy_tztp": [
+  "1"
+ ],
+ "CWServ.ph_zt_kp_sy_jgdy": [
+  "3"
+ ],
+ "CWServ.ph_tdxdatacenter_jgnc": [
+  "00101",
+  1,
+  0
+ ],
+ "CWServ.ph_zt_kp_sy_qsjg": [
+  "3"
+ ],
+ "DataAggregation.queryZST": [
+  "1"
+ ],
+ "CWServ.ph_zt_kp_sy_tjcb": [
+  "3"
+ ],
+ "CWServ.phzzfw_tsyb": [
+  "00105",
+  "1"
+ ],
+ "CWServ.ph_zt_kp_xgb_kxt": [
+  "002",
+  "",
+  "",
+  "1"
+ ],
+ "CWServ.ph_bigdata_xtld_zdsl": [
+  "30",
+  "#code#",
+  "1",
+  "#endDate#"
+ ],
+ "CWServ.ph_zt_kp_sy_ybzx": [
+  "2"
+ ],
+ "CWServ.ph_zt_kp_sy_yjyg": [
+  "3"
+ ],
+ "CWServ.ph_zx_zsdz_zsgz": [
+  "00201",
+  "399006",
+  "000001"
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_v2": [
+  "00102",
+  "",
+  "",
+  "0"
+ ],
+ "CWServ.ph_zt_kp_zjlx": [
+  "00201"
+ ],
+ "CWServ.ph_zt_lhb_sy_lhfp": [
+  "00102",
+  "#dateTime#",
+  60,
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_xsjj": [
+  "jjzl2",
+  0,
+  ""
+ ],
+ "CWServ.app_bklist_ag": [
+  "2"
+ ],
+ "CWServ.ph_tdxdatacenter_rgfx": [
+  "00101",
+  "",
+  "",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_mtcsm_htss": [
+  "00101",
+  "",
+  10
+ ],
+ "CWServ.ph_zt_lhb_ss": [
+  "00102",
+  0,
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_sy": [
+  "#type#",
+  "#date#",
+  "N006",
+  "1",
+  1,
+  20
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt": [
+  "lszjlx3",
+  "4",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_cb_yjkb": [
+  "001",
+  "",
+  "",
+  "",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_cb_yjyg": [
+  "001",
+  "",
+  "",
+  "",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_sy": [
+  "00301",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_gscb": [],
+ "CWServ.ph_tdxdatacenter_tjcb_yjgl": [
+  "00101",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_zyyw": [
+  "00101",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_gglz": [
+  "00101",
+  "",
+  5,
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_gsbg": [
+  "00101",
+  "",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_gstz": [
+  "00104",
+  "",
+  "",
+  "",
+  6,
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_gszl": [
+  "00102",
+  "",
+  "",
+  "",
+  6,
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_ryjg": [
+  "00201",
+  "",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_ryxl": [
+  "00101",
+  "",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_swjy": [
+  "00102",
+  "",
+  "",
+  "",
+  "5",
+  "1",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gszl_zxjy": [
+  "00302",
+  "",
+  "",
+  "",
+  "4",
+  "1",
+  1
+ ],
+ "CWServ.ph_datacenter_hg_czsz": [
+  "001",
+  "",
+  "0"
+ ],
+ "CWServ.ph_datacenter_dghg_wm": [
+  "001",
+  "01,02,03,04",
+  "20",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_dghg_jy": [
+  "001",
+  "01,02,03",
+  "20",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_dghg_hgjq": [
+  "001",
+  "01,02,03,04",
+  "20",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_dghg_gdp": [
+  "001",
+  "gdp",
+  "20",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_hg_dyjjyxf": [
+  "001",
+  "",
+  "",
+  "1",
+  "20"
+ ],
+ "CWServ.ph_datacenter_hg_gdp": [
+  "001",
+  "",
+  "",
+  "0",
+  "10"
+ ],
+ "CWServ.ph_datacenter_hg_gyjj": [
+  "001",
+  "",
+  "1",
+  "5"
+ ],
+ "CWServ.ph_datacenter_hg_jmsh": [
+  "001",
+  "",
+  "1"
+ ],
+ "CWServ.ph_datacenter_hg_holiday": [
+  "001",
+  "#type#"
+ ],
+ "CWServ.ph_datacenter_hg_jqzs": [
+  "001",
+  "",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_datacenter_hg_jybz": [
+  "001",
+  "",
+  "5"
+ ],
+ "CWServ.ph_datacenter_mghg_cz": [
+  "002",
+  "@cstype@",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_wj": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_xf": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_yh": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_sz": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_hgjq": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_gy": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_my": [
+  "001",
+  "",
+  "-1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_gmjjyjy": [
+  "001",
+  "",
+  "5",
+  "1"
+ ],
+ "CWServ.ph_datacenter_mghg_hbzc": [
+  "001",
+  "",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_datacenter_mghg_mlc": [
+  "001",
+  "",
+  "5",
+  "1"
+ ],
+ "CWServ.ph_datacenter_hg_nysc": [
+  "001",
+  "1",
+  "1",
+  "5"
+ ],
+ "CWServ.ph_datacenter_hg_cal": [
+  "001",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_datacenter_hg_tz": [
+  "001",
+  "",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_datacenter_hg_wjzs": [
+  "001",
+  "",
+  "0",
+  "20"
+ ],
+ "CWServ.ph_datacenter_xjphg_hgjq": [
+  "001",
+  "gdp",
+  "-1",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_xjphg_wm": [
+  "001",
+  "01,02,03,04",
+  "20",
+  "-1"
+ ],
+ "CWServ.ph_datacenter_hg_yhhb": [
+  "001",
+  "",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_hqpd_phbj": [
+  "00101",
+  "N011",
+  "1",
+  "1",
+  "20"
+ ],
+ "CWServ.ph_tdxdatacenter_mtcsm_xggg": [
+  "00201",
+  "@code@",
+  "@type@",
+  "@date@"
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_xqy_v2_qsid": [
+  "00701",
+  "@code@",
+  "@type@",
+  "@qsid@",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_qhlhb_syss": [
+  "001",
+  "5",
+  ""
+ ],
+ "CWServ.ph_cfg_sc_rdzz_tqmf": [
+  "1",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_scfx": [
+  "dzjymx",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_kshsj_fwt": [
+  "gssz0000001",
+  5
+ ],
+ "CWServ.ph_pcwebcall_hy_bkldscnx": [
+  "002",
+  "#date#"
+ ],
+ "CWServ.ph_pcwebcall_hy_bkldscfg": [
+  "001",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_xgb": [
+  "00103",
+  "-1"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_ag_rqb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_yffx": [
+  "00105",
+  "@code@",
+  "",
+  "",
+  1,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_bgcz_gsbg": [
+  "00103",
+  "",
+  "#flag#",
+  1,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_bgcz_hghb": [
+  "00101",
+  1
+ ],
+ "CWServ.ph_zt_gbgd_sy": [
+  "00301",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_gqzy": [
+  "0",
+  "0",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_fhrz": [
+  "4",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_bgcz_zccz": [
+  "00102",
+  "",
+  1
+ ],
+ "CWServ.ph_zt_kp_rzrq_che": [
+  "3"
+ ],
+ "CWServ.ph_zt_kp_rzrq_mre": [
+  "3"
+ ],
+ "CWServ.ph_zt_hsgtzt": [
+  "hybd_lgt_hyph_h",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt_v3_cgtj": [
+  "001",
+  ""
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_hyzb": [
+  "2",
+  "",
+  ""
+ ],
+ "JJSServ.ph_datacenter_jjs_hsgt_v3_ss": [
+  "002",
+  "10"
+ ],
+ "CWServ.ph_zt_lhb_sy_ggxq": [
+  "00101",
+  "",
+  "#date#",
+  "",
+  "@code@"
+ ],
+ "CWServ.ph_tdxdatacenter_hzkx": [
+  "00101",
+  "",
+  "",
+  "@code@"
+ ],
+ "CWServ.ph_zt_lhb_sy_ggxq_bg": [
+  "00501",
+  "",
+  "",
+  "#curPage#",
+  "@code@"
+ ],
+ "CWServ.ph_zt_lhb_sy_ggxq_kzz": [
+  "00501",
+  "",
+  "",
+  "#curPage#",
+  "@code@"
+ ],
+ "CWServ.ph_zt_lhb_sy_hgtzy": [
+  "00101",
+  "#date#",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_jyr": [
+  "",
+  "1"
+ ],
+ "CWServ.ph_zt_lhb_sy_wxd": [
+  "1",
+  "",
+  "2"
+ ],
+ "CWServ.ph_zt_lhb_sy_lhqc": [
+  "2026-10-19",
+  2
+ ],
+ "CWServ.ph_zt_lhb_sy_hygg": [
+  "00102",
+  1
+ ],
+ "CWServ.ph_zt_lhb_sy_jg": [
+  "00201",
+  "",
+  1,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy_lhbjd": [
+  3,
+  1
+ ],
+ "CWServ.ph_zt_lhb_sy_lhtc": [
+  "00101",
+  "#date#",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy_sgtzy": [
+  "00101",
+  "#date#",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy_slph": [
+  "00101",
+  "",
+  "4",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_zt_lhb_sy_syph": [
+  "00101",
+  "",
+  "4",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_zt_lhb_sy_xwbj": [
+  "00101",
+  "Ä¦¸ù´óÍ¨Ö¤È¯(ÖÐ¹ú)ÓÐÏÞ¹«Ë¾ÉÏº£Òø³ÇÖÐÂ·Ö¤È¯ÓªÒµ²¿",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy_yzycbd": [
+  "00101",
+  "#date#",
+  "#sortNum#",
+  "#sortType#",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy_yyb": [
+  "00201",
+  "1",
+  2,
+  1,
+  1
+ ],
+ "CWServ.ph_zt_lhb_sy_yybxq": [
+  "00103",
+  "",
+  "",
+  "",
+  "@name@",
+  ""
+ ],
+ "CWServ.ph_zt_lhb_sy_xtyyb": [
+  "00102",
+  "1",
+  "#name1#",
+  "#name2#"
+ ],
+ "CWServ.ph_zt_lhb_sy_yz": [
+  "00101",
+  "#date#",
+  5,
+  1,
+  1
+ ],
+ "CWServ.ph_zt_lhb_sy_yzxq": [
+  "00101",
+  "@name@",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_zt_tlsq_wxjg": [
+  "00301",
+  "",
+  "0",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_syfx_sytj": [
+  "00101",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_cb_yjpd": [
+  "00301",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_ggrbxq": [
+  "001",
+  "",
+  "#code#",
+  "",
+  ""
+ ],
+ "ZXG.DownSelfStock": [
+  {
+   "TDXID": "#TDXID#"
+  }
+ ],
+ "HQServ.hq_nlp_app_misc": [
+  {
+   "ReqId": "201011",
+   "Market": "0",
+   "blockstyle": "3",
+   "Page": "0",
+   "PageSize": "100",
+   "Sort": "1",
+   "Desc": "0",
+   "modname": "module_misc.dll"
+  }
+ ],
+ "HQServ.hq_nlp_jjqc": [
+  {
+   "funcId": 20,
+   "sort": 2,
+   "offset": 0,
+   "count": 5,
+   "date": "#today#",
+   "Token": "c664e4cad9d3941cf1c75c7991ff241883fa734bb71872e63625fb931a62d18d",
+   "modname": "JJQC",
+   "period": 0
+  }
+ ],
+ "HQServ.hq_nlp_mdsi": [
+  {
+   "ReqId": "500111",
+   "DataDate": "0",
+   "Type": "0",
+   "MarketType": "0",
+   "SortType": "2",
+   "SortIndex": "2",
+   "modname": "mod_mdsi.dll"
+  }
+ ],
+ "DataAggregation.queryTechInfo": [
+  {
+   "stockCode": "920091"
+  }
+ ],
+ "DataAggregation.queryCardInfo": [
+  {
+   "stockCode": "920091",
+   "cardId": "RISK_POINT_CARD"
+  }
+ ],
+ "JNLPSE.hotStockDetailDes": [
+  {
+   "market": "2",
+   "stockCode": "920091",
+   "categoryType": "0",
+   "listType": "0"
+  }
+ ],
+ "HQServ.PBHYStat": [
+  {
+   "Num": "6",
+   "Blocktype": "5",
+   "Desc_order": "0",
+   "Iszangsu": "0",
+   "Retzangsu": "6",
+   "Pos": "0",
+   "Needtotalnum": "2"
+  }
+ ],
+ "HQServ.hq_nlp": [
+  {
+   "ReqId": "1997",
+   "DataTime": "90000",
+   "modname": "mod_hsgt.dll"
+  }
+ ],
+ "SNS.queryAllProductListForCustomer": [
+  {
+   "currentPage": "1",
+   "pageSize": "10",
+   "contentType": "5,13",
+   "sortType": "1",
+   "dictCode": "141"
+  }
+ ],
+ "SNS.queryEliteProductListForCustomer": [
+  {
+   "currentPage": "1",
+   "pageSize": "6",
+   "contentType": "5,13"
+  }
+ ],
+ "SNS.queryOwnedProductListForCustomer": [
+  {
+   "currentPage": "1",
+   "pageSize": "10",
+   "contentType": "5,13"
+  }
+ ],
+ "HQServ.hq_nlp_zjlx": [
+  {
+   "ReqId": "200803",
+   "Market": "0",
+   "Type": "1",
+   "Page": "1",
+   "PageSize": "2",
+   "Sort": "10",
+   "Desc": "1",
+   "modname": "mod_zjlx"
+  }
+ ],
+ "HQServ.hq_nlp_misc": [
+  {
+   "ReqId": "200800",
+   "Code": [
+    "#code#"
+   ],
+   "Setcode": [
+    "#setcode#"
+   ],
+   "Page": "0",
+   "PageSize": "2",
+   "Sort": "3",
+   "Desc": "0",
+   "modname": "module_misc.dll"
+  }
+ ],
+ "DataAggregation.queryMessageCardInfo": [
+  {
+   "cardId": "CHASE_MONEY_CARD",
+   "num": 10
+  }
+ ],
+ "JNLPSE.hotListCard": [
+  {
+   "pageNo": "1",
+   "pageSize": "3"
+  }
+ ],
+ "DataAggregation.queryMarketSentiment": [
+  {}
+ ],
+ "HQServ.hq_nlp_app_zbhc": [
+  {
+   "ReqId": "200915",
+   "PoolId": "2001",
+   "InDate": "",
+   "MinZf": "",
+   "Top": "2",
+   "modname": "mod_zbhc.dll"
+  }
+ ],
+ "DataAggregation.queryJdxt": [
+  {
+   "cardId": "6"
+  }
+ ],
+ "DataAggregation.queryCyl": [
+  {
+   "CylSize": "4",
+   "ZlSize": "3"
+  }
+ ],
+ "DataAggregation.queryRandom": [
+  {
+   "cardId": "1",
+   "sumSize": "10",
+   "ranSize": "2"
+  }
+ ],
+ "DataAggregation.queryGggz": [
+  {
+   "cardNum": "3"
+  }
+ ],
+ "JNLPSE.resultGet": [
+  {
+   "strategyName": "A股本月涨幅榜",
+   "pageSize": "20",
+   "currentPage": "1"
+  }
+ ],
+ "DataAggregation.queryKxdz": [
+  {
+   "queryType": "1",
+   "cycleTime": "0",
+   "currentPage": "1",
+   "pageSize": "4"
+  }
+ ],
+ "DataAggregation.queryZbsq": [
+  {
+   "labelId": "12"
+  }
+ ],
+ "SNS.findPostBelongOneTroop": [
+  {
+   "tagId": "40958",
+   "systemType": "1",
+   "currentPage": "1",
+   "pageSize": "10",
+   "flag": "0"
+  }
+ ],
+ "DataAggregation.queryLhfp": [
+  {
+   "date": "#date#",
+   "cardId": "lxfb"
+  }
+ ],
+ "HQServ.hq_nlp_xg": [
+  {
+   "ReqId": "200800",
+   "Page": "0",
+   "PageSize": "20",
+   "Sort": "3",
+   "Desc": "0",
+   "Code": "#subTypeCode#",
+   "Setcode": "#setCode#",
+   "modname": "module_misc.dll"
+  }
+ ],
+ "HQServ.hq_nlp_app_hundred_high": [
+  {
+   "ReqId": "2044",
+   "date": "20261023",
+   "trend_type": "1",
+   "statistics_type": "0",
+   "page": "1",
+   "data_num": "99",
+   "all_add": "0",
+   "sort_type": "1",
+   "sort_index": "zdf",
+   "modname": "mod_hundred_day_high.dll"
+  }
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_jgfx": [
+  "003",
+  "",
+  "",
+  "",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_cyl_clyzxsy": [],
+ "JJSServ.ph_datacenter_jjs_hsgt_v3_agxq": [
+  "005",
+  "000001",
+  "0",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_cfg_fx_sczb": [
+  "001",
+  ""
+ ],
+ "CWServ.ph_cfg_rd_rddh": [
+  "4",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_tfptj": [
+  "00102",
+  "",
+  "0",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_bg": [
+  "00103",
+  "0",
+  "0",
+  "",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_gg": [
+  "00103",
+  "0",
+  "0",
+  "",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_kzz": [
+  "00103",
+  "0",
+  "0",
+  "",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_gz": [
+  "00103",
+  "0",
+  "0",
+  "",
+  "0"
+ ],
+ "CWServ.ph_zt_lrzt_lrrb": [
+  "00101",
+  "",
+  ""
+ ],
+ "CWServ.ph_zt_kp_xgb_bfx": [
+  "003",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_mtcsm_sy": [
+  "00101",
+  "",
+  1
+ ],
+ "CWServ.ph_zt_kp_xgb_txx": [
+  "002",
+  "5"
+ ],
+ "CWServ.phzzfw_qsjg": [
+  ""
+ ],
+ "CWServ.ph_datacenter_slb_ggsy": [
+  "00502",
+  "",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_dsjxy": [
+  "00101",
+  "3",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_bsjj_zj": [],
+ "JJSServ.ph_datacenter_jjs_hsgtzt_v3_bsjj_gg": [
+  "001",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "JJSServ.ph_datacenter_jjs_hsgtzt_v3_bsjj_jg": [
+  "001",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "JJSServ.ph_datacenter_jjs_hsgtzt_v3_bsjj_bk": [
+  "001",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_jjzt_etf_sx_jjgs": [],
+ "CWServ.ph_jjzt_etf_sx": [],
+ "CWServ.ph_jjzt_etf_tt": [
+  "00101",
+  ""
+ ],
+ "CWServ.ph_jjzt_etf_yxhy": [
+  "00101"
+ ],
+ "CWServ.ph_jjzt_etf_ldhy": [
+  "00101",
+  ""
+ ],
+ "CWServ.ph_jjzt_etfjj_hyztetf": [
+  "001",
+  "",
+  ""
+ ],
+ "CWServ.ph_jjzt_etfjj_kjzsetf": [
+  "001"
+ ],
+ "CWServ.ph_jjzt_etf_zsjj": [
+  "00101",
+  0
+ ],
+ "CWServ.ph_zt_xg_xgkzz": [
+  "001",
+  "30"
+ ],
+ "JJSServ.ph_zt_bxzj_sy_bkbd": [
+  "00100",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "JJSServ.ph_zt_bxzj_sy_ggbd": [
+  "00101",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "JJSServ.ph_zt_bxzj_sy_jgbd": [
+  "00100",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.sys_fn_jyr_v2": [],
+ "CWServ.app_keyboard_ag": [
+  "{{searchText}}",
+  "10"
+ ],
+ "CWServ.app_keyboard_hscnjj": [
+  "{{searchText}}",
+  "",
+  10
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt_v3_ss": [
+  "001",
+  "",
+  10
+ ],
+ "AppUpdateInfo.queryAppUpdateInfo": [
+  {
+   "appName": "tdx-card-cyl",
+   "deviceName": "GPhone_Standard",
+   "clientVer": "7.27",
+   "curPkgName": "",
+   "curPkgVer": "",
+   "curPkgMD5Cache": "",
+   "curPkgMD5": "",
+   "machineInfo": "4;192.168.0.104;Redmi;;;;;14;117.147.45.243,0;;;;GPhone_Standard;7.27;2026-08-06 15:15 2.02.76;@ec0:QcR0FDq2vJinPkrZFY5kG2RuclyFpjV4ovL6Xjwvo5ChK/sVmUhLpdm/M9jUQSlG;f4f652dbff48aa10;;;;10736;Redmi_22122RK93C_34_14;;;;"
+  }
+ ],
+ "CWServ.ph_AIcard_zttz_zhid": [
+  "工业母机"
+ ],
+ "CWServ.ph_bigdata_xtld_zdzq": [
+  "688318",
+  "1",
+  "20260608",
+  "20261020"
+ ],
+ "CWServ.ph_cfg_fx_jjhqpd": [
+  "001",
+  "2026",
+  "0",
+  "10",
+  "0"
+ ],
+ "CWServ.ph_cfg_gnzt_sjqd": [
+  "002",
+  ""
+ ],
+ "CWServ.ph_content_cjzx": [
+  "801",
+  "20756567",
+  "",
+  "0"
+ ],
+ "CWServ.ph_datacenter_tztp_gdtp": [
+  "00401",
+  "9900011030",
+  "002369",
+  "卓翼科技",
+  ""
+ ],
+ "CWServ.ph_datacenter_tztp_ggtp": [
+  "00101",
+  "9900011030",
+  "002369",
+  "卓翼科技"
+ ],
+ "CWServ.ph_datacenter_tztp_gstp": [
+  "00201",
+  "",
+  "9900011030",
+  "",
+  ""
+ ],
+ "CWServ.ph_datacenter_tztp_zntp_cyltp": [
+  "00101",
+  "卓翼科技",
+  "002369",
+  "9900011030"
+ ],
+ "CWServ.ph_datacenter_tztp_zntp_djgz": [
+  "00101",
+  1,
+  ""
+ ],
+ "CWServ.ph_datacenter_tztp_zntp_kgtp": [
+  "00101",
+  "9900011030",
+  "",
+  "卓翼科技",
+  "002369"
+ ],
+ "CWServ.ph_datacenter_tztp_zntp_khtp": [
+  "00101",
+  "9900011030",
+  0,
+  0,
+  "卓翼科技",
+  "002369"
+ ],
+ "CWServ.ph_gg_xgrl": [
+  "00101",
+  ""
+ ],
+ "CWServ.ph_jjzt_zsgz": [
+  "00101",
+  "行业",
+  1,
+  1
+ ],
+ "CWServ.ph_pcwebcall_qh_hqpd_bkzs": [
+  "1",
+  "2",
+  "20261031"
+ ],
+ "CWServ.ph_pcwebcall_qh_hqpd_qhhy": [
+  "1",
+  "2",
+  "20261031",
+  "1"
+ ],
+ "CWServ.ph_pcwebcall_tclt_ztmx": [
+  "7",
+  "880550",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_cb_yjgg": [
+  "001",
+  "",
+  "",
+  "",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_cb_yjpd_xqy": [
+  "00102",
+  "",
+  1,
+  "2026-06-30"
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_gdzz_jgcg": [
+  "2026-09-30",
+  "0",
+  "0",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_jgzc_hyzc": [
+  "1",
+  "2026-09-30",
+  1,
+  "szbh",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_cylv2_ag_cyljs": [
+  "001",
+  "CYL00128"
+ ],
+ "CWServ.ph_tdxdatacenter_cylv2_ag_cysj": [
+  "001",
+  "CYL00128",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_cylv2_ag_qjt": [
+  "002",
+  "CYL00128",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_cylv2_qb_sy": [
+  "001",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_dzzx": [
+  "001",
+  1,
+  3
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_gpxq": [
+  "002",
+  "002384",
+  "0",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_zlfx": [
+  "001",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_ggxc_ggxcmx": [
+  "00102",
+  "300662",
+  "2022"
+ ],
+ "CWServ.ph_tdxdatacenter_ggxc_ggxctj": [
+  "00201",
+  "4",
+  "",
+  "",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_ggxc_sy": [
+  "00101"
+ ],
+ "CWServ.ph_tdxdatacenter_ggzx": [
+  "00101",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_stms": [
+  "00101",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_xjllrfz": [
+  "00102",
+  "",
+  0,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_yjdq": [
+  "00101",
+  "",
+  "",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gz": [
+  "000990",
+  "5"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_sy_ggbx": [
+  "1",
+  "0",
+  "1",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_sy_hybx": [
+  1,
+  0,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_sy_qsfx": [
+  "1",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_sy_ztms": [
+  "PE"
+ ],
+ "CWServ.ph_tdxdatacenter_hyfx_sy": [
+  1,
+  "H01"
+ ],
+ "CWServ.ph_tdxdatacenter_jgdy_jgdy": [
+  "00101",
+  "",
+  "0",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_qh_cdzl": [
+  "001",
+  "20",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_qhlhb_jcgc": [
+  "001",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_qhlhb_sy": [
+  "001",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_rl": [
+  "2026-10-20"
+ ],
+ "CWServ.ph_tdxdatacenter_sctj": [
+  "00101",
+  "",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2": [
+  "00101",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_ybzxrm_jx": [
+  "",
+  "",
+  "",
+  "",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_ybzxrm_tjx": [
+  "00104"
+ ],
+ "CWServ.ph_tdxdatacenter_zpfxb_ggzj": [
+  "001",
+  5,
+  "2026-10-20",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_zpfxb_ggzsph": [
+  "001",
+  "1",
+  "2026-10-20"
+ ],
+ "CWServ.ph_tdxdatacenter_zpfxb_qsgfx": [
+  "001",
+  "1",
+  "2026-10-20"
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_xzcfg": [
+  "001",
+  "",
+  "",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_ztld": [
+  "001",
+  "1088",
+  "0",
+  ""
+ ],
+ "CWServ.ph_zt_bjszt": [
+  "001",
+  "0",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_zt_gbgd_gdfx": [
+  "00102",
+  "",
+  "",
+  "",
+  1
+ ],
+ "CWServ.ph_zt_gbgd_gdhs": [
+  "jszd",
+  "1",
+  ""
+ ],
+ "CWServ.ph_zt_gbgd_jgcg": [
+  "00201",
+  "99",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_zt_lhb_sy": [
+  "00101",
+  "1",
+  "2026",
+  "10",
+  ""
+ ],
+ "CWServ.ph_zt_lrzt_lrbd": [
+  "00401",
+  "",
+  "1",
+  "5",
+  "N001",
+  "1"
+ ],
+ "CWServ.ph_zt_lrzt_lrmx": [
+  "00101",
+  "",
+  0,
+  "",
+  0,
+  ""
+ ],
+ "CWServ.ph_zt_lrzt_lrtj_zrt": [
+  "00101",
+  "",
+  "",
+  "",
+  "1"
+ ],
+ "CWServ.ph_zt_lrzt_sy": [
+  "00101",
+  ""
+ ],
+ "CWServ.ph_zt_tlsq_lryd": [
+  "00101",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_zt_tlsq_lryd_20": [
+  "00203",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_zt_tlsq_sy": [
+  "00111",
+  0,
+  0
+ ],
+ "CWServ.ph_zt_xg_ipo": [
+  "grid2",
+  "--",
+  "--",
+  "",
+  1,
+  1
+ ],
+ "CWServ.ph_zt_xg_ipozcz": [
+  "001"
+ ],
+ "CWServ.ph_zt_xg_xgjx": [
+  "001",
+  "n002"
+ ],
+ "CWServ.ph_zt_xg_xgmz": [
+  "003",
+  "",
+  2
+ ],
+ "CWServ.ph_zt_xg_xgsg": [
+  "sgxx"
+ ],
+ "CWServ.ph_zt_xg_xgsh": [
+  "chart",
+  "--",
+  "--",
+  1,
+  2
+ ],
+ "CWServ.ph_zt_zjlx_cxlclr": [
+  "00301",
+  "",
+  30,
+  0,
+  0
+ ],
+ "CWServ.ph_zt_zjlx_sy_zjjd": [
+  3,
+  1
+ ],
+ "DataAggregation.lhbsj": [
+  "00102",
+  "",
+  0,
+  0,
+  "",
+  1,
+  365
+ ],
+ "DataAggregation.rdjd": [
+  {
+   "flag": "001",
+   "page": "1",
+   "pageSize": "20",
+   "sortNum": "rq",
+   "sortType": "1",
+   "type1": "",
+   "type2": ""
+  }
+ ],
+ "DataAggregation.sy_tp": [
+  {
+   "page": "1"
+  }
+ ],
+ "DataAggregation.zttz_jhqz": [
+  "00401",
+  "",
+  10
+ ],
+ "DataAggregation.zttz_xzgn2": [
+  "01001",
+  "",
+  1
+ ],
+ "HQServ.hq_nlp_app_cyq64": [
+  {
+   "ReqId": "60000",
+   "TypeOne": "0",
+   "TypeTwo": "0",
+   "modname": "mod_cyq64.dll"
+  }
+ ],
+ "HQServ.hq_nlp_copilot": [
+  {
+   "ReqId": "200773",
+   "themeType": "0",
+   "dataType": "1",
+   "dataNum": "1",
+   "dataDate": "2",
+   "modname": "mod_copilot.dll"
+  }
+ ],
+ "HQServ.hq_nlp_index_indicator": [
+  {
+   "ReqId": "3000",
+   "Date": "0",
+   "Code": "000001",
+   "SetCode": "1",
+   "Cycle": "10",
+   "modname": "mod_index_indicator.dll"
+  }
+ ],
+ "HQServ.hq_nlp_indexselect": [
+  {
+   "ReqId": "200504",
+   "Type": "1",
+   "Page": "0",
+   "PageSize": "2",
+   "modname": "mod_indexselect.dll"
+  }
+ ],
+ "HQServ.hq_nlp_peg": [
+  {
+   "ReqId": "200353",
+   "blockcode": "",
+   "SortType": "3",
+   "Desc": "1",
+   "timetype": "1",
+   "during": "中",
+   "name": "十月",
+   "value_up": "0",
+   "value_down": "0",
+   "Page": "0",
+   "PageSize": "3",
+   "modname": "mod_peg.dll"
+  }
+ ],
+ "HQServ.hq_nlp_similar": [
+  {
+   "ReqId": "201930",
+   "MarketDomain": "0",
+   "MatchKCnt": "20",
+   "DataTpye": "0",
+   "WeightPrice": "100",
+   "WeightVol": "0",
+   "WeightZdf": "0",
+   "WeightKLine": "0",
+   "WeightMA": "0",
+   "Match": "80",
+   "TQType": "1",
+   "FilterType": "0",
+   "modname": "mod_similar"
+  }
+ ],
+ "HQServ.hq_nlp_tcihq": [
+  {
+   "ReqId": "200730",
+   "pxzd": 4,
+   "px": 1,
+   "Page": 1,
+   "PageSize": 20,
+   "modname": "mod_tcihq.dll"
+  }
+ ],
+ "JNLPSE.bkList": [
+  {
+   "subType": "0",
+   "cycle": "0",
+   "occurTime": "2026-10-20",
+   "lastDay": "1"
+  }
+ ],
+ "JNLPSE.yesterdayList": [
+  {
+   "occurTime": "2026-10-20"
+  }
+ ],
+ "JNLPSE:wendaQuery": [
+  {
+   "message": "涨幅,半导体,最新价,换手率",
+   "rang": "AG",
+   "pageNo": "1",
+   "pageSize": "5",
+   "order_field": "chg",
+   "occurTime": "2026-10-20",
+   "removeDate": "1"
+  }
+ ],
+ "CWServ.ph_tdxdatacenter_jgpj_sy": [
+  "00101"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_rqb_stock": [
+  "001",
+  "0",
+  "0",
+  "002242"
+ ],
+ "JJSServ.ph_datacenter_jjs_hsgt_v3_agbkxq": [
+  "001",
+  "@code@",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_zt_hsgtzt_ggtgg": [
+  "00401",
+  "",
+  "",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt_v3_ggxq": [
+  "004",
+  "@code@",
+  "1",
+  "20"
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_jjxq": [
+  "001",
+  "@code@",
+  "@sc@",
+  "#type#",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_ss": [
+  "002",
+  "",
+  10
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_yxsb": [
+  "001",
+  "",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_yybxq": [
+  "001",
+  "@name@",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_kzzxq": [
+  "001",
+  "@code@",
+  "@sc@",
+  "#type#",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_qzfx": [
+  "00104",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gscb_zzms": [
+  "00103",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_tjcb_sy": [
+  "10"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_cwfx_cwbhqs": [
+  "00101",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_bdbd": [
+  "007",
+  1,
+  20
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_bsjj_gg": [
+  "20261016"
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt_v3_ggbkxq": [
+  "001",
+  "@code@",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_hsgt_v3_agxq": [
+  "@code@",
+  "1",
+  1,
+  5
+ ],
+ "JJSServ.ph_datacenter_jjs_hsgt_v3_jgxq": [
+  "001",
+  "@jgid@",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_nxjj_bk": [
+  "001",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_nxjj_gg": [
+  "002",
+  "#date#",
+  "N004",
+  1
+ ],
+ "CWServ.ph_zt_hsgtzt_v3_nxjj_zj": [
+  "003",
+  1,
+  1
+ ],
+ "CWServ.ph_jjzt_etfjj_gnztetf": [
+  "001",
+  "",
+  ""
+ ],
+ "CWServ.ph_jjzt_etfjj_xfetfjj": [
+  "007"
+ ],
+ "CWServ.ph_zt_tlsq_fmxw": [
+  "00204",
+  1,
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_syfx_syzjzcbxq": [
+  "00101",
+  "",
+  "",
+  0,
+  ""
+ ],
+ "CWServ.ph_zt_tlsq_dzyd": [
+  "00205",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_zt_tlsq_knst": [
+  "00101",
+  1
+ ],
+ "CWServ.ph_zt_tlsq_tplq": [
+  "00103",
+  "@code@",
+  "",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_sq_dkb": [
+  "#entrycode#",
+  "",
+  "1",
+  "100"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hypm_hk": [
+  "003",
+  "@hycode@",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_gzb_stock": [
+  "001",
+  "12",
+  "#setcode#",
+  "#code#"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_rsb_stock": [
+  "001",
+  "12",
+  "#setcode#",
+  "#code#"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hypm_ag": [
+  "003",
+  "@hycode@",
+  ""
+ ],
+ "CWServ.phf10_zx_dstx": [
+  "@code@",
+  "dstx_gg",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_rdfx": [
+  "003",
+  "@setcode@",
+  "@code@"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hypm_usa": [
+  "003",
+  "@hycode@",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_zxg": [
+  "002",
+  "#SelfStock#",
+  1,
+  20
+ ],
+ "CWServ.phsj_sc_xgrl": [
+  "2"
+ ],
+ "CWServ.ph_tdxdatacenter_ztqd": [
+  "00102",
+  "0",
+  "3",
+  "2026-10-19",
+  "2",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_ztzt": [
+  "2026-10-08",
+  "0",
+  3
+ ],
+ "CWServ.ph_tdxdatacenter_bklt": [
+  "00101",
+  "2",
+  "2026-10-08"
+ ],
+ "JNLPSE:resultGet": [
+  {
+   "currentPage": "1",
+   "pageSize": "10",
+   "strategyName": "ÐÄ¶¯Ñ¡¹É"
+  }
+ ],
+ "JNLPSE:hotStrategy": [
+  {
+   "limit": "3"
+  }
+ ],
+ "CWServ:ph_agf10_zp": [
+  "00103",
+  "920091"
+ ],
+ "CWServ.ph_pcwebcall_dbl_qsxt": [
+  "001",
+  "920091"
+ ],
+ "CWServ.ph_agf10_zx_dstx": [
+  "920091",
+  "dstx_gg_check",
+  "1"
+ ],
+ "CWServ.ph_agf10_dstx_lhb": [
+  "00104",
+  "920091",
+  "",
+  "",
+  "1"
+ ],
+ "CWServ.ph_agf10_zxts": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_zxts2": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_zxts_yjpl": [
+  "003",
+  "920091",
+  ""
+ ],
+ "CWServ.ph_agf10_zxts3": [
+  "00501",
+  "920091",
+  "",
+  ""
+ ],
+ "CWServ.ph_agf10_zxts4": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_zxts5": [
+  "00101",
+  "920091",
+  0
+ ],
+ "CWServ.ph_agf10_gbgd": [
+  "00201",
+  "920091",
+  "",
+  "",
+  0
+ ],
+ "CWServ.ph_agf10_scrd": [
+  "00201",
+  "920091",
+  ""
+ ],
+ "CWServ.ph_agf10_fhrz": [
+  "00101",
+  "920091"
+ ],
+ "CWServ.ph_agf10_cw_sy_v2": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_cw_zyzb": [
+  "920091"
+ ],
+ "CWServ.ph_agf10_hypm": [
+  "00301",
+  "920091",
+  ""
+ ],
+ "CWServ.ph_jjzt_gggljj": [
+  "00101",
+  "920091",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_agf10_sl_v2": [
+  "00201",
+  "920091"
+ ],
+ "CWServ.ph_ai_sjfx_zdjy": [
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_ai_sjfx_lhjy": [
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_ai_sjfx_kxjy": [
+  "lskx",
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_ai_sjfx_rzrj": [
+  "001",
+  "920091",
+  "2",
+  ""
+ ],
+ "CWServ.ph_ai_sjfx_lnjy": [
+  "920091",
+  "2"
+ ],
+ "CWServ.ph_ai_sjfx_zhpj": [
+  "wzsm",
+  "920091"
+ ],
+ "JNLPSE.getHotQues": [
+  {
+   "currentPage": "1",
+   "pageSize": "4"
+  }
+ ],
+ "DataAggregation.queryCardInfoStrategy": [
+  {
+   "title": "Ç¿ÊÆ",
+   "strategyType": "2",
+   "currentPage": "1",
+   "pageSize": "2"
+  }
+ ],
+ "HQServ.hq_nlp_factor": [
+  {
+   "ReqId": "200626",
+   "sortType": "1",
+   "desc": "0",
+   "Page": "0",
+   "PageSize": "1",
+   "modname": "mod_Factor.dll"
+  }
+ ],
+ "JNLPSE.getCardType": [
+  {
+   "sceneType": "1"
+  }
+ ],
+ "JNLPSE.getTitile": [
+  {
+   "sceneType": "1",
+   "phCard": "17"
+  }
+ ],
+ "CWServ.ph_datacenter_zdt_zdfx": [
+  "zdtj",
+  "2026-10-23",
+  0,
+  ""
+ ],
+ "CWServ.ph_jjzt_jjpj": [
+  0,
+  1,
+  1,
+  1
+ ],
+ "CWServ.ph_jjzt_jjph": [
+  0,
+  2,
+  1,
+  1
+ ],
+ "CWServ.ph_jjzt_zcjj": [
+  "00101",
+  "",
+  "",
+  0,
+  0,
+  0
+ ],
+ "JNLPSE.expandList": [
+  {
+   "categoryType": "2"
+  }
+ ],
+ "CWServ.ph_jjzt_etf_hq": [
+  "00101",
+  "8",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_bgq": [],
+ "CWServ.ph_agf10_jyfx": [
+  "00101",
+  "600303",
+  ""
+ ],
+ "CWServ.ph_agf10_gsjj": [
+  "00201",
+  "600303",
+  "0"
+ ],
+ "CWServ.ph_datacenter_tztp_ssk": [
+  "00101",
+  "600303"
+ ],
+ "CWServ.ph_agf10_cw_lyb": [
+  "00101",
+  "600303"
+ ],
+ "CWServ.ph_agf10_cw_cwbg": [
+  "00101",
+  "600303",
+  "0"
+ ],
+ "CWServ.ph_agf10_cw_cwfxxq": [
+  "600303"
+ ],
+ "CWServ.ph_agf10_cw_zcfz": [
+  "00301",
+  "600303",
+  ""
+ ],
+ "CWServ.ph_agf10_cw_xjllb": [
+  "00101",
+  "600303"
+ ],
+ "CWServ.ph_agf10_cw_zcfzb": [
+  "600303"
+ ],
+ "CWServ.ph_agf10_jysj": [
+  "00101",
+  "600303",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_agf10_jyfx_zbyz": [
+  "00101",
+  "600303"
+ ],
+ "CWServ.ph_agf10_jj_cgtj": [
+  "001",
+  "600303",
+  ""
+ ],
+ "CWServ.ph_agf10_jj": [
+  "00701",
+  "600303",
+  "2026-09-30",
+  "N006",
+  "1",
+  "",
+  ""
+ ],
+ "CWServ.sys_fn_sczhjk": [
+  "600303",
+  "1"
+ ],
+ "CWServ.ph_agf10_zx_tsyb": [
+  "600303"
+ ],
+ "CWServ.ph_zx_dstx": [
+  "600303_AG",
+  "dstx_gg_list",
+  "1"
+ ],
+ "CWServ.ph_agf10_cw_tjcj": [
+  "600303"
+ ],
+ "CWServ.ph_tdxdatacenter_dzjy_hyyyb": [
+  "001",
+  "1",
+  "N002",
+  "1",
+  1,
+  20
+ ],
+ "CWServ.ph_jjzt_etf_fejk": [
+  "00101",
+  "1",
+  "4"
+ ],
+ "CWServ.ph_jjzt_etf_t0": [
+  "00101",
+  "0",
+  ""
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_cwfx": [
+  "00102",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_gdqk": [
+  "00102",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_gsds": [
+  "00102",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_gzdb": [
+  "00102",
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_scbx": [
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_yfsl": [
+  "@code@",
+  "#date#"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_xqydb": [
+  "00101",
+  "@code@"
+ ],
+ "CWServ.ph_tdxdatacenter_tjcb_sy": [
+  "00101",
+  "@code@"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_ag_gzb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_ag_rsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_ag_bsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_ag_zrb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hk_rqb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hk_gzb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hk_rsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hk_bsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_hk_zrb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_block": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_usa_rqb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_usa_gzb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_usa_rsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_usa_bsb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_usa_zrb": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_qh": [],
+ "CWServ.ph_tdxdatacenter_tdxrb_etf": [
+  "001"
+ ],
+ "CWServ.ph_tdxdatacenter_tdxrb_kzz": [],
+ "JNLPSE:getHotQues": [
+  {
+   "currentPage": "1",
+   "pageSize": "20"
+  }
+ ],
+ "JNLPSE.getStrategyDetail": [
+  {
+   "strategyName": "主力活动,boll线突破中轨,底部特征,双底启动,资金持续流入,集合竞价有异动,主力有拉升迹象,强势突破年线,绩优股反弹,回马枪,好友反攻,上涨会合线,三兵进军,短线超卖,蜻蜓点水,上升三法,双针探底,射击之星,底部反转,弱市捡钱包"
+  }
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_gg": [
+  "0",
+  "4",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsgz": [
+  "行业",
+  "N005",
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_hyfx_hyfxsy_yjhy": [],
+ "CWServ.ph_tdxdatacenter_gzzc_hyfx_hyfxsy_zhysj": [
+  "X10",
+  "N006",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_zttz_xggp": [
+  "00901",
+  "880703",
+  "2",
+  1,
+  100,
+  0,
+  1
+ ],
+ "CWServ.mzx_zxzx_zt_new": [
+  "301",
+  "1001"
+ ],
+ "CWServ.ph_zt_tlsq_yjbl": [
+  "00101",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_slb": [
+  "sct",
+  "",
+  1,
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_aitc": [
+  "sct",
+  "",
+  1,
+  0,
+  0,
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_syfx_ggsy": [
+  "00101"
+ ],
+ "CWServ.ph_zt_tlsq_gdjc": [
+  "00101",
+  "",
+  "",
+  1
+ ],
+ "CWServ.ph_zt_tlsq_ladc": [
+  "00102",
+  0,
+  1,
+  20
+ ],
+ "CWServ.ph_zt_tlsq_xsjj": [
+  "00101",
+  "1",
+  "",
+  "",
+  "",
+  0,
+  0
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_jgzc_gn_lscgbd": [
+  "881151",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_jgzc_hy_xxq": [
+  "881151",
+  "2026-09-30",
+  "3"
+ ],
+ "CWServ.ph_tdxdatacenter_cgfx_jgzc_hy_ggzcmx": [
+  "881151",
+  "2026-09-30",
+  "3",
+  "zcbl",
+  1,
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_hyxq_scbx": [
+  "881344"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_hyxq_czx": [
+  "881344"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_hyxq_hytj": [
+  "881344",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_hyxq_hygz": [
+  "881344",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_ggxq_ymdb": [
+  "603439"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_ggxq_ylpm": [
+  "603439",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_ggxq_gzdb": [
+  "603439",
+  "1",
+  "603439"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsxq_xgjj": [
+  "000110",
+  1,
+  "N003",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsxq_zxgg": [
+  "000110",
+  1
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsxq_hq_jdzf": [
+  "000110"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsxq_lshc": [
+  "000110",
+  "1"
+ ],
+ "CWServ.ph_tdxdatacenter_gzzc_zsxq_gzzs": [
+  "000110",
+  "000001",
+  "3Y",
+  "PE"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_agxq": [
+  "00101",
+  "002731",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_bgxq": [
+  "00101",
+  "200488",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_gzxq": [
+  "00101",
+  "836033",
+  "44",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_ggxq": [
+  "00101",
+  "03774",
+  "31",
+  "0"
+ ],
+ "CWServ.ph_tdxdatacenter_tfp_v2_kzzxq": [
+  "00101",
+  "127027",
+  "0",
+  "0"
+ ],
+ "CWServ.ph_jjzt_etfjj_xfetfjj_v2": [
+  "510300"
+ ]
+}

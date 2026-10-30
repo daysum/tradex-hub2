@@ -1,14 +1,14 @@
 {
-  "version": "3.3.11",
-  "description": "tradex-hub 金融数据中枢 - MCP Server 配置（v3.3.11）",
+  "version": "3.6.0",
+  "description": "tradex-hub 金融数据中枢 - MCP Server 配置（v3.6.0 + tdxdata Phase 1+2+3，146 工具）",
   "servers": {
     "tradex": {
       "name": "tradex 金融数据中枢",
       "type": "stdio",
-      "tools": 129,
-      "modules": ["company_info", "price_data", "financial_stmt", "valuation", "industry", "market", "news_events", "macro_fx", "signal_data", "eltdx_data(31)", "technical_indicators", "performance_metrics", "signal_generation", "factor_analysis", "stock_screening", "diagnostics", "composite_analysis", "analysis_engine", "local_data(2)"],
-      "version": "3.3.11",
-      "note": "eltdx行情类第一主源+AKShare第二源+东财/同花顺备用，129个MCP工具，三层架构(L1数据/L2计算/L3决策)，SmartRouter 全量路由(含v3.3.2超时保护)，astock_signals 已并入本仓 src/astock_signals 为唯一主源，数据源看板 python -m tradex.dashboard"
+      "tools": 146,
+      "modules": ["company_info", "price_data", "financial_stmt", "valuation", "industry", "market", "news_events", "macro_fx", "signal_data", "eltdx_data(32)", "technical_indicators", "performance_metrics", "signal_generation", "factor_analysis", "stock_screening", "diagnostics", "composite_analysis", "analysis_engine", "local_data(2)", "tdxdata_data(10)", "tdxdata_deep(5)"],
+      "version": "3.6.0",
+      "note": "eltdx行情类第一主源+AKShare第二源+东财/同花顺备用，146个MCP工具，三层架构(L1数据/L2计算/L3决策)，SmartRouter 全量路由(含v3.3.2超时保护)，astock_signals 已并入本仓 src/astock_signals 为唯一主源，tdxdata 0.3.0 vendored 于 src/tdxdata（421 数据中心产品，15 个 tdxdata 工具 + 1 个 L2 风险指标；Phase 2/3 作为 market_breadth/historical_kline/minute_data/finance_report/today_ticks 备源），数据源看板 python -m tradex.dashboard"
     },
     "tdx-connector": {
       "name": "通达信 MCP",

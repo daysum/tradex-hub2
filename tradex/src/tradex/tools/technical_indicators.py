@@ -18,13 +18,14 @@ Category 10: Technical Indicators Calculation — 纯函数技术指标计算 (V
 _atr_values/_sma/_ema），MCP 工具与 signal_generation.py 全部调用同一实现，
 消除双文件漂移。
 
-Tools (共 6 个):
+Tools (共 7 个):
   62. calculate_ma_ema   - MA/EMA 均线计算
   63. calculate_macd      - MACD 指标计算
   64. calculate_kdj       - KDJ 随机指标
   65. calculate_rsi       - RSI 相对强弱指数
   66. calculate_boll      - BOLL 布林带
   67. calculate_atr       - ATR 平均真实波幅
+  68. calculate_risk_metrics - 风险指标（HV/动量/夏普/最大回撤/Beta，v3.4.0）
 """
 
 from __future__ import annotations
@@ -560,3 +561,110 @@ def register(mcp: FastMCP):
             })
         except Exception as e:
             return error_response(f"ATR 计算失败: {e}", "calculate_atr")
+
+    @mcp.tool()
+    async def calculate_risk_metrics(
+        closes: list[float],
+        benchmark_closes: list[float] = [],  # noqa: B006 - MCP schema 需要字面默认值
+        period: int = 20,
+        risk_free_rate: float = 0.02,
+        include_series: bool = False,
+    ) -> str:
+        """
+        计算 5 个风险/绩效指标（纯本地计算，无网络）。
+
+        算法来自 vendored tdxdata.indicator（纯标准库实现）：
+        - 年化历史波动率 HV：对数收益样本标准差 × sqrt(252) × 100
+        - 动量 MOM：(close[i]/close[i-n]-1) × 100
+        - 夏普比率 SHARPE：(mean(r)-rf/252)/std(r) × sqrt(252)
+        - 最大回撤 MDD：窗口内相对峰值的最大回撤（百分数，<= 0）
+        - Beta：个股收益对基准收益的滚动 OLS 斜率（需等长基准序列）
+
+        Args:
+            closes: 收盘价数组（升序）
+            benchmark_closes: 基准收盘价数组（可选，与 closes 等长；用于 Beta）
+            period: 滚动窗口，默认 20（必须 >= 2）
+            risk_free_rate: 年化无风险利率（小数，默认 0.02 = 2%）
+            include_series: 是否返回完整滚动序列（默认 False，只返回最新值）
+
+        Returns:
+            JSON：latest（最新有效值）+ units/notes；include_series=True 时附 series。
+            数据不足或窗口内无有效值时对应字段为 null（不填 0）。
+        """
+        try:
+            if not closes:
+                return error_response("参数错误: closes 不能为空", "calculate_risk_metrics")
+            try:
+                n = int(period)
+            except (TypeError, ValueError):
+                return error_response(
+                    f"参数错误: period 必须是整数（收到 {period!r}）",
+                    "calculate_risk_metrics",
+                )
+            if n < 2:
+                return error_response(
+                    "参数错误: period 必须 >= 2（样本标准差至少需要 2 个收益）",
+                    "calculate_risk_metrics",
+                )
+            if len(closes) <= n:
+                return error_response(
+                    f"数据不足: 需要至少 {n + 1} 个收盘价，当前 {len(closes)}",
+                    "calculate_risk_metrics",
+                )
+            if benchmark_closes and len(benchmark_closes) != len(closes):
+                return error_response(
+                    "参数错误: benchmark_closes 必须与 closes 等长（调用方负责日历对齐），"
+                    f"当前 {len(benchmark_closes)} vs {len(closes)}",
+                    "calculate_risk_metrics",
+                )
+
+            from tdxdata import indicator as ind  # 懒加载，纯函数无网络
+
+            hv = ind.hv(closes, n)
+            mom = ind.momentum(closes, n)
+            sharpe = ind.sharpe(closes, n, rf=float(risk_free_rate))
+            mdd = ind.max_drawdown(closes, n)
+            beta = ind.beta(closes, benchmark_closes, n) if benchmark_closes else []
+
+            def _last(series: list) -> float | None:
+                for value in reversed(series):
+                    if value is not None:
+                        return value
+                return None
+
+            result: dict[str, Any] = {
+                "success": True,
+                "algorithm": "tdxdata.indicator",
+                "period": n,
+                "risk_free_rate": float(risk_free_rate),
+                "data_points": len(closes),
+                "latest": {
+                    "annualized_volatility_pct": _last(hv),
+                    "momentum_pct": _last(mom),
+                    "sharpe": _last(sharpe),
+                    "max_drawdown_pct": _last(mdd),
+                    "beta": _last(beta) if benchmark_closes else None,
+                },
+                "units": {
+                    "annualized_volatility_pct": "%",
+                    "momentum_pct": "%",
+                    "sharpe": "dimensionless",
+                    "max_drawdown_pct": "% (<=0)",
+                    "beta": "dimensionless",
+                },
+                "note": (
+                    "头部不足 period 的位置为 null；max_drawdown 为 <=0 的百分数；"
+                    "beta 需要与 closes 等长的 benchmark_closes"
+                ),
+            }
+            if include_series:
+                result["series"] = {
+                    "annualized_volatility_pct": hv,
+                    "momentum_pct": mom,
+                    "sharpe": sharpe,
+                    "max_drawdown_pct": mdd,
+                    **({"beta": beta} if benchmark_closes else {}),
+                }
+            return dict_to_json(result)
+        except Exception as e:
+            return error_response(f"风险指标计算失败: {e}", "calculate_risk_metrics")

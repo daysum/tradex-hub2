@@ -699,6 +699,7 @@ def _load_ohlcv(code: str, look_back_days: int) -> pd.DataFrame:
         start_date=start_date,
         end_date=end_date,
         adjust="qfq",
+        timeout=30,
     )
 
     if df is None or df.empty:

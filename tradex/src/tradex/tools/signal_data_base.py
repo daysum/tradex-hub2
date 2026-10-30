@@ -241,6 +241,7 @@ def register(mcp: FastMCP):
                 start_date=start_date,
                 end_date=end_date,
                 adjust="qfq",
+                timeout=30,
             )
 
             if df is None or df.empty:

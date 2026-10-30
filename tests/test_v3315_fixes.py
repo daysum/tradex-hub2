@@ -260,7 +260,9 @@ class TestBackupSourceRegistration:
         # 总注册数演进：90 → 94（v3.3.14）→ 101（v3.3.15）
         #   → 102（fund_hold 由单源升为 em_zlsj_direct + akshare 双源）
         #   → 103（v3.3.30 新增 recent_minute，eltdx 独占源）
-        assert sum(len(v) for v in router._sources.values()) == 103
+        #   → 106（v3.4.0 Phase 2 新增 tdxdata 3 个备源）
+        #   → 108（v3.4.0 Phase 3 新增 tdxdata：finance_report/today_ticks）
+        assert sum(len(v) for v in router._sources.values()) == 108
 
     def test_new_sources_registered_with_priority(self, router):
         for data_type, name, prio in NEW_SOURCES:

@@ -6,8 +6,8 @@
 
 tradex-hub 是为 AI Agent（Trae / Claude Code / Cursor / Dify / LangChain）提供 A 股金融数据 MCP 接口的统一数据层。
 
-- **MCP 工具总数**：130 个（v3.3.30 口径；本文件其余小节为 v3.1.4 时期内容，工具/数据源清单以 README 与 `tradex-hub-接口与安装手册.md` 为准）
-- **数据源**：data_sources 数据源层（79 类型 103 源）→ SmartRouter 全量路由（eltdx 主 + AKShare/东财/同花顺备）
+- **MCP 工具总数**：146 个（v3.6.0 口径；本文件其余小节为 v3.1.4 时期内容，工具/数据源清单以 README 与 `tradex-hub-接口与安装手册.md` 为准）
+- **数据源**：data_sources 数据源层（79 类型 108 源）→ SmartRouter 全量路由（eltdx 主 + AKShare/东财/同花顺备）
   - v3.3.30 起 `historical_kline` / `full_kline` / `adjusted_kline` 支持分钟周期
     （1m/5m/15m/30m/60m），新增 `recent_minute` 路由（近期历史分时 0x0feb）
 - **传输方式**：stdio（本地 MCP Server，默认）+ HTTP 网关（v3.3.12+，`python -m tradex --http`，单端口提供 Streamable HTTP `/mcp` + legacy SSE `/sse` + `/health`，见 `tradex/http_server.py`）
@@ -41,6 +41,7 @@ tradex (v3.1.0) ── FastMCP Server, 89 MCP 工具
 ├── data_sources/         — 数据源层（25 类型 34 源，注册到 SmartRouter）
 │   ├── registry.py       — 数据源注册表（register_all_sources 注册 25 类型 34 源）
 │   ├── eltdx_fetchers.py     — eltdx 通达信协议 fetcher（行情/K线/分时/竞价/逐笔/F10）
+│   ├── tdxdata_fetchers.py   — tdxdata（手机版 7615）客户端单例/锁/探针（Phase 0）
 │   ├── akshare_fetchers.py   — AKShare fetcher（行情/财务/估值/行业/新闻/宏观等）
 │   ├── http_fetchers.py      — 腾讯 HTTP fetcher（实时行情/一致预期兜底）
 │   └── astock_signals_fetchers.py — astock_signals 包 fetcher（资金流/龙虎榜/涨停板/ETF/可转债等）
@@ -56,10 +57,12 @@ tradex (v3.1.0) ── FastMCP Server, 89 MCP 工具
 │   ├── news_events.py     (4 工具) — 个股新闻/财报日历/公告/关键词搜索
 │   ├── macro_fx.py        (8 工具) — GDP/CPI/PMI/M2/汇率/国债/两融/增减持
 │   ├── signal_data.py     (17 工具) — 涨停/解禁/概念/预期/技术指标/北向/资金流/龙虎/行业/ETF/可转债/涨停板
-│   └── eltdx_data.py      (5 工具) — 集合竞价/逐笔/F10/分时/K线
+│   ├── eltdx_data.py      (5 工具) — 集合竞价/逐笔/F10/分时/K线
+│   ├── tdxdata_data.py    (10 工具) — 421 数据中心产品/涨跌家数/板块/市场统计（v3.4.0 Phase 1）
+│   └── tdxdata_deep.py    (5 工具) — 结构化 F10/财报/资金流榜/龙虎榜复盘/个股明细（v3.6.0 Phase 3）
 │
-├── L2 计算引擎层（8 工具）
-│   ├── technical_indicators.py (6 工具) — MA/EMA/MACD/KDJ/RSI/BOLL/ATR 纯函数计算
+├── L2 计算引擎层（9 工具）
+│   ├── technical_indicators.py (7 工具) — MA/EMA/MACD/KDJ/RSI/BOLL/ATR + 风险指标
 │   └── performance_metrics.py  (2 工具) — 完整绩效报告/绩效指标清单
 │
 ├── L3 决策支持层（16 工具）
@@ -116,13 +119,13 @@ astock_signals 已独立成包 v1.1.0，位于 `trae_projects/astock_signals/`�
 | 分时数据 | ~40ms | ⚠️ 有但源不同 |
 | K线（多周期） | ~80ms | ⚠️ 有但源不同 |
 
-### 2.6 L2 计算引擎层（8 工具）
+### 2.6 L2 计算引擎层（9 工具）
 
 L2 层提供纯函数计算能力，输入价格/收益数组，输出量化指标，不依赖外部数据源。
 
 | 模块 | 工具数 | 功能 | 算法要点 |
 |------|--------|------|---------|
-| technical_indicators | 6 | MA/EMA、MACD、KDJ、RSI、BOLL、ATR | SMA 前 n-1 个为 null；EMA 首值用 SMA 初始化；RSI 用 Wilder 平滑法 |
+| technical_indicators | 7 | MA/EMA、MACD、KDJ、RSI、BOLL、ATR、风险指标（HV/动量/夏普/最大回撤/Beta） | SMA 前 n-1 个为 null；EMA 首值用 SMA 初始化；RSI 用 Wilder 平滑法；风险指标来自 vendored tdxdata.indicator |
 | performance_metrics | 2 | 完整绩效报告（21项指标）、绩效指标清单 | 覆盖收益/风险/风险调整收益/交易质量/费用统计/基准对比 |
 
 **特点**：纯内存计算，无网络 IO，适合回测和实时分析；结果与 Excel/通达信一致。
@@ -153,13 +156,16 @@ L3 层基于 L1 数据 + L2 计算结果，组合调用提供交易决策支持�
 4. **延迟感知**：优先选择延迟更低的源
 5. **独占源标记**：`exclusive=True` 的源无备用，失败即返回错误（如 eltdx 集合竞价/逐笔/F10）
 
-**数据源矩阵（25 类型 34 源，eltdx 为行情类第一主源）**：
+**数据源矩阵（79 类型 108 源，eltdx 为行情类第一主源；节选）**：
 
-| 数据类型 | 主源（P1） | 备用1（P100） | 兜底（P200） | 独占 |
+| 数据类型 | 主源（P1） | 备用1（P100） | 兜底（P300） | 独占 |
 |---------|-----------|--------------|-------------|------|
 | 实时行情 realtime_quote | **eltdx** | akshare | tencent_http | |
-| 历史K线 historical_kline | **eltdx** | akshare | | |
-| 分时数据 minute_data | **eltdx** | akshare | | |
+| 历史K线 historical_kline | **eltdx** | akshare | **tdxdata** | |
+| 分时数据 minute_data | **eltdx** | akshare | **tdxdata** | |
+| 涨跌家数 market_breadth | **em_push2ex** | **tdxdata** | | |
+| 财报 finance_report | **eltdx** | **tdxdata(100)** | | |
+| 当日逐笔 today_ticks | **eltdx** | **tdxdata(100)** | | |
 | 集合竞价 call_auction | eltdx | | | ✅ 是 |
 | 逐笔成交 tick_data | eltdx | | | ✅ 是 |
 | F10资料 f10_profile | eltdx | | | ✅ 是 |
@@ -183,7 +189,8 @@ L3 层基于 L1 数据 + L2 计算结果，组合调用提供交易决策支持�
 | 盈利预测 profit_forecast | akshare | tencent_http | | |
 | 概念归属 concept_attribution | em_push2delay | | | |
 
-> 行情类（实时行情/历史K线/分时）以 **eltdx 为第一主源**（郑州节点 TCP 3.5ms），akshare 备用，tencent_http 兜底；eltdx 独占的集合竞价/逐笔/F10 无备用源。
+> 行情类（实时行情/历史K线/分时）以 **eltdx 为第一主源**（郑州节点 TCP 3.5ms），akshare 备用；历史K线/分时再以 **tdxdata(300)** 兜底；eltdx 独占的集合竞价/逐笔/F10 无备用源。
+> `market_breadth` 由东财 push2ex 主、tdxdata(100) 备；`finance_report` / `today_ticks` 由 eltdx 主、tdxdata(100) 备（tdxdata 财报为英文字段、逐笔无方向/开盘撮合标记）。
 
 ### 2.8.1 数据源看板（v3.1.0 新增）
 
@@ -227,7 +234,7 @@ AI Agent (Trae / Claude Code / Cursor)
         ▼
   tradex server.py
         │
-        ├── 注册 18 个工具模块 → 89 个 MCP 工具
+        ├── 注册 21 个工具模块 → 146 个 MCP 工具
         │
         ├── L1 数据获取层（65 工具）→ SmartRouter.route() 统一路由
         │   └── data_sources/ 数据源层（25 类型 34 源）
@@ -238,7 +245,7 @@ AI Agent (Trae / Claude Code / Cursor)
         │       └── tencent_http → 腾讯行情 HTTP
         │       （SmartRouter 自动选择：健康评分/降级/隔离/独占源标记）
         │
-        ├── L2 计算引擎层（8 工具）
+        ├── L2 计算引擎层（9 工具）
         │   └── 纯函数计算（无网络 IO）→ MA/MACD/KDJ/RSI/BOLL/ATR/绩效指标
         │
         └── L3 决策支持层（16 工具）

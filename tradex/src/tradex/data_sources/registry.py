@@ -1,7 +1,16 @@
 """
 数据源注册中心 — register_all_sources()。
 
-注册全部 38 个数据类型到 SmartRouter，按数据源矩阵定义优先级与独占标记。
+注册全部 79 个数据类型到 SmartRouter，按数据源矩阵定义优先级与独占标记。
+
+⚠️ v3.4.0 Phase 2/3：为以下类型追加 tdxdata（通达信 7615）备源：
+  - historical_kline : eltdx(1) → akshare(100) → **tdxdata(300)**
+  - minute_data      : eltdx(1) → akshare(100) → **tdxdata(300)**
+  - market_breadth   : em_push2ex(1) → **tdxdata(100)**
+  - finance_report   : eltdx(1) → **tdxdata(100)**（标准英文字段）
+  - today_ticks      : eltdx(1) → **tdxdata(100)**（无方向/无开盘撮合标记）
+  ⚠️ dividend_financing 未接 tdxdata：tdxdata 的 get_xdxr 是「IPO/融资累计统计」，
+  不是逐次分红/除权事件表；接进来会造成语义错配（详见 docs/known-issues.md J 组）。
 
 数据源矩阵（39 个数据类型，v3.3.1 新增 global_market_quote）：
   | data_type            | priority=1        | priority=100  | priority=200  | exclusive |
@@ -120,7 +129,7 @@ def _do_register() -> None:
     # v3.3.30 新增：近期历史分时（协议 0x0feb），与 minute_history(0x0fb4) 覆盖范围不同
     router.register("recent_minute", "eltdx", ef.fetch_recent_minute, priority=1, exclusive=True)
     router.register("minute_aux", "eltdx", ef.fetch_minute_aux, priority=1, exclusive=True)
-    router.register("today_ticks", "eltdx", ef.fetch_today_ticks, priority=1, exclusive=True)
+    router.register("today_ticks", "eltdx", ef.fetch_today_ticks, priority=1)
     router.register("opening_match", "eltdx", ef.fetch_opening_match, priority=1, exclusive=True)
     router.register("full_kline", "eltdx", ef.fetch_full_kline, priority=1, exclusive=True)
     router.register("adjusted_kline", "eltdx", ef.fetch_adjusted_kline, priority=1, exclusive=True)
@@ -128,8 +137,8 @@ def _do_register() -> None:
     router.register("shortline_indicators", "eltdx", ef.fetch_shortline_indicators, priority=1, exclusive=True)
     router.register("finance_batch", "eltdx", ef.fetch_finance_batch, priority=1, exclusive=True)
     router.register("special_limits", "eltdx", ef.fetch_special_limits, priority=1, exclusive=True)
-    router.register("finance_report", "eltdx", ef.fetch_finance_report, priority=1, exclusive=True)
-    router.register("dividend_financing", "eltdx", ef.fetch_dividend_financing, priority=1, exclusive=True)
+    router.register("finance_report", "eltdx", ef.fetch_finance_report, priority=1)
+    router.register("dividend_financing", "eltdx", ef.fetch_dividend_financing, priority=1)
     router.register("company_news", "eltdx", ef.fetch_company_news, priority=1, exclusive=True)
     router.register("northbound_holding", "eltdx", ef.fetch_northbound_holding, priority=1, exclusive=True)
     router.register("stock_topics", "eltdx", ef.fetch_stock_topics, priority=1, exclusive=True)
@@ -266,6 +275,40 @@ def _do_register() -> None:
     # ── v3.3.0 新增：同花顺问财数据源（可选依赖） ──
     router.register("wencai_query", "pywencai", wf.fetch_wencai_query, priority=1)
     router.register("wencai_news", "iwencai_openapi", wf.fetch_wencai_news, priority=1)
+
+    # ── v3.4.0 Phase 2：tdxdata 备源（通达信 7615） ──
+    # 只在启用时注册；关闭 TDXDATA_ENABLED 后现有路由完全不受影响。
+    # 注意：tdxdata 与 eltdx 同属通达信生态，对 eltdx 独占类型不构成跨上游备源；
+    # 这里只给“有东财/akshare 主源”的类型增加备源。
+    try:
+        from . import tdxdata_fetchers as tdf
+
+        if tdf.is_enabled():
+            router.register(
+                "market_breadth", "tdxdata", tdf.fetch_market_breadth, priority=100
+            )
+            router.register(
+                "historical_kline", "tdxdata", tdf.fetch_historical_kline, priority=300
+            )
+            router.register(
+                "minute_data", "tdxdata", tdf.fetch_minute_data, priority=300
+            )
+            # Phase 3：财报 + 当日逐笔备源
+            router.register(
+                "finance_report", "tdxdata", tdf.fetch_finance_report, priority=100
+            )
+            router.register(
+                "today_ticks", "tdxdata", tdf.fetch_today_ticks, priority=100
+            )
+            logger.info(
+                "tdxdata 备源已注册: market_breadth(100), "
+                "historical_kline(300), minute_data(300), "
+                "finance_report(100), today_ticks(100)"
+            )
+        else:
+            logger.info("tdxdata 备源未注册: TDXDATA_ENABLED=false")
+    except Exception as exc:  # noqa: BLE001 - 可选依赖，失败不阻断主流程
+        logger.warning("tdxdata 备源注册跳过: %s", exc)
 
     report = router.get_registry_report()
     data_types = sorted({x["data_type"] for x in report})

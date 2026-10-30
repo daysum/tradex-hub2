@@ -4,6 +4,139 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 
+## [3.6.0] - 2026-10-30
+
+### Added
+
+- **龙虎榜 `lhfp` 列义映射**：新增 `tdx_get_lhb_review(date="", max_rows=60)`
+  （工具 144→145）：
+  - `N001` → `date`（日期）
+  - `N002` → `listed_count`（上榜股票数；与东财龙虎榜按日去重股票数
+    **连续 5 个交易日逐日完全一致**）
+  - `N003` → `net_amount_yuan`（TDX 复盘口径净额；与东财 `BILLBOARD_NET_AMT`
+    汇总不完全一致，例如 2026-10-29 TDX -12.52 亿 vs 东财 -9.76 亿，只建议看方向/量级）
+  - `N004` / `N005` / `N006` **不映射**：满足 `N002 = N004 + N005 + N006`，
+    但语义未证实；原值保留在每行 `raw`。
+- **龙虎榜个股明细**：新增 `tdx_get_lhb_stocks(date="", view="list", max_rows=0)`
+  （工具 145→146）：
+  - `view="list"` → `lhbsj` 全量个股行（同一股票可因不同异动原因多行）；
+  - `view="detail"` → `lhzy` 上游前 20，含净买占比、TDX 异动码、标签/概念 JSON；
+  - 字段 `code/name/market(0深/1沪/2北)/price/change_pct/amount_yuan/
+    net_buy_amount_yuan/net_buy_ratio_pct/tag/reason_code/date/tags/concepts`
+    已用东财逐股核对（`ACCUM_AMOUNT`/`BILLBOARD_NET_AMT`/`CHANGE_RATE` 一致）。
+- 新增 `tests/test_tdxdata_deep.py` 6 项龙虎榜测试（lhfp 2 + 个股明细 4）。
+
+### Notes
+
+- 龙虎榜 raw 产品其余列仍不猜列义；需要东财精确口径/原因文本请用 `get_dragon_tiger`。
+- 全量离线 **999 passed / 7 deselected**。
+
+## [3.5.0] - 2026-10-30
+
+### Added
+
+- **Phase 3 深水区：3 个结构化 tdxdata 工具**（`tools/tdxdata_deep.py`，工具 141→144）：
+  - `tdx_get_f10(symbol, section="gsjj", max_rows=0)`：22 个 F10 section
+    （gsjj/jyfx/gbgd/zbyz/rdtc/fhrz/zg_jby/zg_scm/zg_zs/zp/...）；
+  - `tdx_get_finance(symbol, kind="zcfz", max_rows=0)`：9 类财报
+    （zcfz/lyb/xjllb/zyzb/cwbg/cwfxxq/tjcj/zysy/zyzbxq），标准英文字段；
+  - `tdx_get_capital_flow_rank(top_n=20)`：全市场主力净流入榜（上游固定前 20）。
+- 新增 `tests/test_tdxdata_deep.py`（7 项）。
+
+### Notes
+
+- **只接已有标准字段/语义层的接口**；龙虎榜/涨停池/解禁等 raw 产品继续走
+  `tdx_get_product`，在拿到逐列证据前不硬映射。
+- `tdx_get_f10(section="fhrz")` 与 `get_xdxr` 同源：是 IPO/融资累计统计
+  （`ipo_count`/`ipo_proceeds_yuan`），**不是**逐次分红/除权事件表。
+- `tdx_get_capital_flow_rank` 不支持单代码（榜单命令无代码位）；单代码请用
+  `get_money_flow`；`price` / `net_inflow_pct` 本通道恒 `null`。
+- `tdx_get_finance(kind="cwfxxq")` 上游多 ResultSet 且列义未定，会抛
+  `NotSupportedError`（不猜列名）。
+- 全量离线 **993 passed / 7 deselected**。
+
+## [3.4.1] - 2026-10-30
+
+### Fixed
+
+- **K 组：eltdx `historical_kline` 忽略 `start_date` / `end_date` / `adjust`（静默错数据）。**
+  此前 `fetch_historical_kline` 的签名只有 `code/symbol/period/count`，日期与复权参数
+  被 `**kwargs` 吞掉：
+  - `get_historical_price(start_date=..., end_date=...)` 实际返回最近 100 根
+    （首行可能是几个月前），日期区间完全失效；
+  - `get_historical_price(adjust="qfq")` 实际拿到不复权数据；
+  - `analysis_engine` / `signal_data_base` 传 `start_date` 后也只拿到最近 100 根，
+    回看窗口 >100 根时指标/信号基于不足数据计算。
+
+  修法（`data_sources/eltdx_fetchers.py`）：
+  - 真正接收并过滤 `start_date` / `end_date`；
+  - 按日期范围从最新一页向前分页回溯（`bars.get(start=offset)`，最多 8 页 / 6400 根）；
+  - 日期范围优先于 `count`，`count` 只作为“至少取多少根”的下限
+    （避免 live_smoke 通用池 `count=5` 截断区间）；
+  - 真正透传 `adjust` 到 `bars.get(adjust=...)`；
+  - 超出可获取历史时**显式抛错**，不静默截断。
+
+- 新增回归测试 `tests/test_eltdx_kline_date_range.py`（6 项）：日期过滤、跨页回溯、
+  `count` 下限、`adjust` 透传、超出历史报错、非法日期格式报错。
+
+### Notes
+
+- 实测：`get_historical_price("600519", 20261020~20261024, qfq)` 返回 4 行；
+  `2022-01-10` 的 qfq 收盘 1742.99 vs 不复权 1966.00，复权参数确实生效。
+- 全量离线 **986 passed / 7 deselected**。
+
+## [3.4.0] - 2026-10-30
+
+> Phase 0 + Phase 1 + Phase 2 + Phase 3：接入 tdxdata（通达信手机版 7615）数据中心，
+> 并注册为 5 类现有数据的备源。
+
+### Added
+
+- **Vendored tdxdata 0.3.0**（commit `a276f57`，MIT）到 `tradex/src/tdxdata/`：
+  纯标准库零依赖，含 421 个数据中心产品目录与 7615 协议引擎；`VENDORED.md`
+  记录来源/commit/同步步骤；`pyproject.toml` wheel packages 已加入 `src/tdxdata`。
+- **`data_sources/tdxdata_fetchers.py`**：tdxdata 客户端单例 + 全局锁 + `call()` +
+  `_shutdown()` + `tdx_ping()`；`server.py` lifespan 退出时关闭长连接。
+- **10 个 tdxdata MCP 工具**（`tools/tdxdata_data.py`，工具总数 130→140）：
+  - `tdx_list_products` / `tdx_get_product`（421 产品目录 + 通用访问）
+  - `tdx_get_market_breadth` / `tdx_get_breadth_history`（实时/历史涨跌家数）
+  - `tdx_get_intraday_samples`（多代码当日分时点位，实验性）
+  - `tdx_get_boards` / `tdx_get_board_members`（六类板块 / 概念成分股）
+  - `tdx_get_market_stat` / `tdx_get_price_limits`
+  - `tdx_status`（集成状态/节流统计）
+- **`docs/tdxdata-products.md`**：57 个常用产品中文说明与参数提示。
+- **Phase 2 备源**（`data_sources/tdxdata_fetchers.py` + `registry.py`）：
+  - `market_breadth` 增加 tdxdata（priority=100，主源东财 push2ex）
+  - `historical_kline` 增加 tdxdata（priority=300，主源 eltdx → akshare）
+  - `minute_data` 增加 tdxdata（priority=300，主源 eltdx → akshare）
+  - 严格周期/复权映射：`quarter` → tdxdata `season`；年线/3 分钟**显式抛错**；
+    未知复权同样抛错，不回落默认值。
+  - K 线输出 12 列与 akshare 口径一致；换手率恒 `null`（上游不提供），
+    振幅/涨跌幅/涨跌额由上一根收盘自算，首行无前收为 `null`。
+  - 相关工具路由超时放宽到 30s（`get_historical_price` / `get_intraday_data` /
+    `eltdx_get_kline` / `eltdx_get_minutes` / 技术分析与技术指标内部调用）。
+- **Phase 3 深化**：
+  - 新增 L2 工具 `calculate_risk_metrics`：HV / 动量 / 夏普 / 最大回撤 / Beta
+    （基于 vendored `tdxdata.indicator`，纯函数无网络）。工具总数 **140 → 141**。
+  - `finance_report` 增加 tdxdata 备源（priority=100，标准英文字段；与 eltdx T 编码字段不同）。
+  - `today_ticks` 增加 tdxdata 备源（priority=100；**无买卖方向/开盘撮合标记**，
+    成交额按 price×手数×100 推算，最多 1000 笔/次）。
+  - `dividend_financing` **故意不接** tdxdata：`get_xdxr` 是 IPO/融资累计统计，
+    不是分红/除权事件表，接入会造成语义错配。
+  - 数据源注册数 106 → **108**（新增 finance_report/today_ticks 两个 tdxdata 备源）。
+- **配置**：`TDXDATA_ENABLED` / `TDXDATA_CONNECT_TIMEOUT` / `TDXDATA_GAP` /
+  `TDXDATA_ROUTE_TIMEOUT` / `TDXDATA_CACHE_TTL` / `TDXDATA_MAX_ROWS`。
+- **测试**：`tests/test_tdxdata_packaging.py`（6）、`tests/test_tdxdata_fetchers.py`（49）、
+  `tests/test_tdxdata_tools.py`（23）、`tests/test_risk_metrics.py`（6）；
+  `scripts/tdxdata_smoke.py` 真实网络冒烟；全量离线 **980 passed / 7 deselected**。
+
+### Notes
+
+- tdxdata 单命令约 2.2 秒匀速节流、按来源 IP 限流；这些工具定位为低频/按需查询，
+  未接入实时行情主链路。
+- 421 个产品中仅 52 个有标准列义；未登记产品返回原始列并在 `column_note` 提示。
+- 数据源注册数 103→108（tdxdata 5 个备源条目），数据类型仍 79 个。
+
 ## [3.3.30] - 2026-09-26
 
 本轮主题：**分钟级 K 线全线打通 + 消灭两个「静默错数据」缺陷**。

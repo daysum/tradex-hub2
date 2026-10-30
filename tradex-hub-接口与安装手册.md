@@ -1,8 +1,8 @@
 # tradex-hub 接口与安装手册
 
-> **版本**：v3.3.30 ｜ **接口总数**：130 个 MCP 工具 ｜ **数据范围**：A 股 + 全球指数/美股/外汇 + 宏观
+> **版本**：v3.6.0 ｜ **接口总数**：146 个 MCP 工具 ｜ **数据范围**：A 股 + 全球指数/美股/外汇 + 宏观
 > **仓库**：https://github.com/wolfjkd/tradex-hub ｜ **许可**：Apache-2.0 ｜ **作者**：郭良勇 (wolfjkd)
-> **文档生成**：2026-09-18，接口清单由源码 AST 自动提取（`tools/` 目录 23 个模块）
+> **文档生成**：2026-09-18，接口清单由源码 AST 自动提取（`tools/` 目录 24 个模块）
 
 ---
 
@@ -13,7 +13,7 @@
 - [三、运行与接入 AI Agent](#三运行与接入-ai-agent)
 - [四、字段与数据约定](#四字段与数据约定)
 - [五、接口函数总览](#五接口函数总览)
-- [六、接口详细说明（130 个）](#六接口详细说明130-个)
+- [六、接口详细说明（146 个）](#六接口详细说明146-个)
 - [七、环境变量参考](#七环境变量参考)
 - [八、故障排查](#八故障排查)
 - [附录 A：工具统计](#附录-a工具统计)
@@ -24,20 +24,21 @@
 
 tradex-hub 是一个面向 AI Agent（WorkBuddy / Claude Code / Cursor / Dify / LangChain）的
 **A 股金融数据 + 量化计算 + 决策支持 MCP Server**，基于 AKShare、eltdx 通达信协议、
-astock_signals 信号模块构建，提供 **130 个 MCP 工具**。
+astock_signals 信号模块、tdxdata 数据中心构建，提供 **146 个 MCP 工具**。
 
 ### 1.1 三层能力模型
 
 | 层级 | 能力 | 工具数 | 说明 |
 |------|------|--------|------|
 | **L1 数据获取层** | 行情 / 财务 / 估值 / 行业 / 新闻 / 宏观 / 涨停板 / 龙虎榜 / 五档盘口 / 逐笔 / 分时 / 题材 / 短线指标 | 106 | 通过 `SmartRouter` 统一获取，自动健康评分 / 降级 / 故障隔离 |
-| **L2 计算引擎层** | 技术指标计算 6 个、绩效指标计算 2 个 | 8 | 纯函数实现，结果与 Excel / 通达信一致 |
+| **L1+ tdxdata 数据中心** | 421 产品 / 涨跌家数 / 板块 / 市场统计 / F10 / 财报 / 资金流榜 / 龙虎榜复盘 / 龙虎榜个股明细 | 15 | vendored tdxdata（通达信 7615），2.2s 节流，低频查询 |
+| **L2 计算引擎层** | 技术指标计算 6 个、风险指标计算 1 个、绩效指标计算 2 个 | 9 | 纯函数实现，结果与 Excel / 通达信一致 |
 | **L3 决策支持层** | 交易信号 3、多因子 2、条件选股 2、系统诊断 5、综合分析 3、技术分析引擎 1 | 16 | 组合调用 L1+L2，输出可执行结论 |
-| | | **130** | |
+| | | **146** | |
 
 ### 1.2 数据源架构
 
-- **data_sources 数据源层**：79 个数据类型、103 个数据源注册（37 种源），按封禁风险分三梯队
+- **data_sources 数据源层**：79 个数据类型、108 个数据源注册（38 种源），按封禁风险分三梯队
 - **SmartRouter 全量覆盖**：L1 工具通过 `SmartRouter.route()` 统一取数，自动健康评分 / 降级 / 故障隔离
 - **数据源梯队**：
   - 第一梯队（不封 IP）：`eltdx` 通达信 / 腾讯 / 本地 vipdoc
@@ -57,6 +58,10 @@ astock_signals 信号模块构建，提供 **130 个 MCP 工具**。
 - **`em_post()` 统一 POST 入口（v3.3.24）**：与 `em_get` 共用节流 / 重试 / 镜像 / 熔断，
   避免 POST 类接口（如 emappdata 人气榜）成为绕过防封层的后门。
 - **eltdx 3.2.2**：行情类第一主源，32 个工具；3.x 为 Rust 重写内核（native wheel，cp310-abi3）
+- **tdxdata 0.3.0（Phase 2/3）**：vendored 通达信手机版 7615 客户端；Phase 2/3 起作为
+  `market_breadth`（100）/ `historical_kline`（300）/ `minute_data`（300）/
+  `finance_report`（100）/ `today_ticks`（100）的备源。
+  单命令约 2.2s 节流、按来源 IP 限流，只做低频兜底，不做实时主源。
 - **数据源看板**：`python -m tradex.dashboard`（端口 8765），也可通过 MCP 工具 `get_data_source_dashboard` 查询
 
 > **网络边界铁律**：数据源流量（AKShare / eltdx / 东财等）**永远直连**，import 时已清代理环境变量；
@@ -72,7 +77,7 @@ tradex-hub/
 │   │   ├── __main__.py          # 入口：stdio / --http
 │   │   ├── http_server.py       # HTTP 网关（/mcp + /sse + /health）
 │   │   ├── config.py            # 环境变量配置中心
-│   │   ├── tools/               # ★ 23 个工具模块（130 个接口）
+│   │   ├── tools/               # ★ 25 个工具模块（146 个接口）
 │   │   ├── data_sources/        # 数据源层 + SmartRouter 注册表
 │   │   ├── utils/               # symbol / formatter / cache 等
 │   │   └── dashboard/           # 数据源看板（端口 8765）
@@ -232,7 +237,7 @@ python -m tradex --http --allowed-hosts '*'                # 仅可信内网：�
 |------|------|------|
 | `POST /mcp` | Streamable HTTP | MCP 2025 新标准，Dify / LangChain / Claude 远程客户端首选 |
 | `GET /sse` + `POST /messages/` | legacy SSE | 旧客户端兼容（MCP 官方已标 deprecated）|
-| `GET /health` | HTTP | `{"status":"ok","service":"tradex-mcp","version":"3.3.30","tools":130}`，轻量探活不触发数据源 |
+| `GET /health` | HTTP | `{"status":"ok","service":"tradex-mcp","version":"3.6.0","tools":146}`，轻量探活不触发数据源 |
 
 **Dify / LangChain 配置**：URL 填 `http://<服务器IP或域名>:8000/mcp`，类型选 `streamable-http`
 （旧端点则用 `http://<服务器IP或域名>:8000/sse`）。
@@ -354,8 +359,11 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 数据类型 | 主源 → 备源 |
 |----------|-------------|
 | 实时行情 | `eltdx(TCP)` → `akshare` → `tencent_http` |
-| 历史 K 线 | `eltdx` → `akshare` |
-| 分时数据 | `eltdx` → `akshare` |
+| 历史 K 线 | `eltdx` → `akshare` → `tdxdata(300)` |
+| 分时数据 | `eltdx` → `akshare` → `tdxdata(300)` |
+| 涨跌家数 | `em_push2ex` → `tdxdata(100)` |
+| 财务报表（financial_report） | `eltdx` → `tdxdata(100)` |
+| 当日逐笔（today_ticks） | `eltdx` → `tdxdata(100)` |
 | 集合竞价 / 逐笔 / F10 | `eltdx` **独占** |
 | 财务报表 / 行业板块 / 宏观 | `akshare` |
 | 个股资金流 | `em_push2` → `akshare` |
@@ -363,7 +371,8 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 北向资金 | `ths_hsgt` → `akshare` |
 | 涨停板池 | `em_push2_clist` **独占** |
 
-> 路由自带 **12s 超时保护**、健康评分、故障源半开探测自愈；单源失败自动降级，
+> 路由默认 **12s 超时保护**；历史K线/分时/技术分析等调用已显式放宽到 **30s**
+> （tdxdata 单命令约 2.2s 节流，需要更宽的窗口）。健康评分、故障源半开探测自愈照旧。
 > 多源全挂时返回错误结构而非静默空数据。
 
 ---
@@ -386,7 +395,7 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 12 | A股信号·可转债 | `signal_data_cb.py` | 2 | `get_cb_realtime_data`、`get_cb_value_analysis_data` |
 | 13 | A股信号·涨停板 | `signal_data_board.py` | 3 | `get_limit_up_board`、`get_board_sentiment`、`get_limit_up_insight` |
 | 14 | eltdx 通达信协议 | `eltdx_data.py` | 32 | 见 [14 节](#14-eltdx-通达信协议32-个) |
-| 15 | 技术指标计算（L2）| `technical_indicators.py` | 6 | `calculate_ma_ema`、`calculate_macd`、`calculate_kdj`、`calculate_rsi`、`calculate_boll`、`calculate_atr` |
+| 15 | 技术指标计算（L2）| `technical_indicators.py` | 7 | `calculate_ma_ema`、`calculate_macd`、`calculate_kdj`、`calculate_rsi`、`calculate_boll`、`calculate_atr`、`calculate_risk_metrics` |
 | 16 | 绩效指标计算（L2）| `performance_metrics.py` | 2 | `calculate_performance`、`list_performance_metrics` |
 | 17 | 信号生成（L3）| `signal_generation.py` | 3 | `generate_trading_signal`、`scan_stocks_for_signals`、`validate_signal_quality` |
 | 18 | 因子分析（L3）| `factor_analysis.py` | 2 | `calculate_factor_score`、`get_factor_catalog` |
@@ -395,14 +404,16 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | 21 | 技术分析引擎（L3）| `analysis_engine.py` | 1 | `analyze_technical` |
 | 22 | 系统诊断 | `diagnostics.py` | 5 | `get_data_source_health`、`list_all_tools`、`get_cache_stats`、`health_check`、`get_data_source_dashboard` |
 | 23 | 本地数据 | `local_data.py` | 2 | `get_local_kline`、`get_local_minute` |
-| | | | **130** | |
+| 24 | tdxdata 数据中心 | `tdxdata_data.py` | 10 | `tdx_list_products`、`tdx_get_product`、`tdx_get_market_breadth`、`tdx_get_breadth_history`、`tdx_get_intraday_samples`、`tdx_get_boards`、`tdx_get_board_members`、`tdx_get_market_stat`、`tdx_get_price_limits`、`tdx_status` |
+| 25 | tdxdata 深水区 | `tdxdata_deep.py` | 5 | `tdx_get_f10`、`tdx_get_finance`、`tdx_get_capital_flow_rank`、`tdx_get_lhb_review`、`tdx_get_lhb_stocks` |
+| | | | **146** | |
 
 > 上表与第六节清单**以源码为准**自动生成。README 部分小节（如"市场总览 5 个"、
 > "新闻公告 4 个"）为历史版本口径，实际工具数已随后续版本扩充。
 
 ---
 
-## 六、接口详细说明（130 个）
+## 六、接口详细说明（146 个）
 
 > 参数表中"必填"依据函数签名是否有默认值判定；`—` 表示无默认值（必填）。
 
@@ -490,6 +501,9 @@ Agent 应调用 `eltdx_get_kline` 并返回日 K 线数据；连接器页面 `tr
 | `adjust` | string | 否 | `"qfq"` | 复权类型，"qfq"（前复权）, "hfq"（后复权）, ""（不复权）|
 
 **返回**：K线数据 (JSON)，包含日期、开盘价、收盘价、最高价、最低价、成交量、成交额、振幅、涨跌幅、涨跌额、换手率。
+
+> v3.4.1 起 eltdx 主源真正按 `start_date`/`end_date` 过滤，并透传 `adjust`
+> 到服务端；日期范围最多向上回溯 6400 根，超出可用历史会显式报错（不静默截断）。
 
 #### `get_intraday_data`
 
@@ -1706,7 +1720,7 @@ _无入参。_
 | `entry` | string | **是** | — | 接口名，可选：valuation(估值)/theme_market(题材行情)/ stock_score(个股总评)/profit_forecast(盈利预测)/ ranking_detail(排名)/governance(治理)/ shareholder_change_plans(增减持)/business_composition(主营构成)/ announcements(公告)/news(新闻)/stock_info(基础信息) |
 | `code` | string | **是** | — | 股票代码，如 "600170" |
 
-### 15. 技术指标计算（L2）（6 个）
+### 15. 技术指标计算（L2）（7 个）
 
 > 源码模块：`tradex/src/tradex/tools/technical_indicators.py`
 
@@ -1860,6 +1874,28 @@ ATR 自第二根起有效（EMA 首值 = 首根 TR，通达信口径）。
 - tr: TR 真实波幅数组（首个为 null）
 - period: 周期
 - data_points: 数据点数
+
+#### `calculate_risk_metrics`
+
+计算 5 个风险/绩效指标（纯本地计算，无网络）。
+
+算法来自 vendored `tdxdata.indicator`：
+- 年化历史波动率 HV：对数收益样本标准差 × sqrt(252) × 100
+- 动量 MOM：(close[i]/close[i-n]-1) × 100
+- 夏普比率 SHARPE：(mean(r)-rf/252)/std(r) × sqrt(252)
+- 最大回撤 MDD：窗口内相对峰值的最大回撤（百分数，<= 0）
+- Beta：个股收益对基准收益的滚动 OLS 斜率（需等长基准序列）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `closes` | list[float] | **是** | — | 收盘价数组（升序）|
+| `benchmark_closes` | list[float] | 否 | `[]` | 基准收盘价数组（与 closes 等长，用于 Beta）|
+| `period` | integer | 否 | `20` | 滚动窗口，必须 >= 2 |
+| `risk_free_rate` | number | 否 | `0.02` | 年化无风险利率（小数）|
+| `include_series` | boolean | 否 | `false` | 是否返回完整滚动序列 |
+
+**返回**：latest（最新有效值）+ units/notes；`include_series=true` 时附 series。
+数据不足或窗口内无有效值时对应字段为 `null`（不填 0）。
 
 ### 16. 绩效指标计算（L2）（2 个）
 
@@ -2233,6 +2269,159 @@ _无入参。_
 
 ---
 
+### 24. tdxdata 数据中心（10 个）
+
+> 源码模块：`tradex/src/tradex/tools/tdxdata_data.py`
+> 数据上游：vendored `tdxdata 0.3.0`（通达信手机版 7615，纯标准库零依赖）
+> ⚠️ 单命令约 **2.2 秒**匀速节流，限流按**来源 IP** 计；这些工具适合低频/按需查询，
+> 不适合高频轮询或并发批量。所有返回带 `source="tdxdata"` / `latency_ms` / `provenance`。
+
+| 工具 | 主要参数 | 说明 |
+|------|----------|------|
+| `tdx_list_products` | `domain=""`, `keyword=""`, `limit=50` | 421 个产品目录（**不联网**）；按域/关键词过滤 |
+| `tdx_get_product` | `name`, `params=""`, `mapped=True`, `max_rows=0`, `allow_empty=True` | 按产品名取数；`params` 为 JSON 数组/对象，用于覆盖产品模板 |
+| `tdx_get_market_breadth` | `view="summary"`, `max_rows=0` | **实时**涨跌家数；`summary` 5 列，`minute` 逐分钟 |
+| `tdx_get_breadth_history` | `code="880005"`, `count=60` | 历史广度：880005/880006/880866/880641 |
+| `tdx_get_intraday_samples` | `symbols`, `count=0`, `max_rows=0` | 多代码当日分时点位；实验性，仅指数 999999 实证 |
+| `tdx_get_boards` | `kind="all"`, `max_rows=0` | 板块清单：industry/concept/area/style/industry1~3 |
+| `tdx_get_board_members` | `board`, `max_rows=0` | **概念板块**成分股（含入选理由/纳入日期） |
+| `tdx_get_market_stat` | `kind="updown"`, `max_rows=0` | 涨跌停家数近 30 日 / 行业涨跌 / 情绪 |
+| `tdx_get_price_limits` | `symbol`, `prev_close=0`, `is_st=False` | 个股涨停价/跌停价 |
+| `tdx_status` | — | 集成状态/节流统计/最近调用（**不联网**） |
+
+**产品访问约定**
+
+- 421 个产品中只有 **52 个**登记了标准列义（`mapped=True` 可用）；其余返回服务端原始列
+  （`N001...`），工具会在 `column_note` 显式提示。常用产品中文说明见 `docs/tdxdata-products.md`。
+- `params` 必须是 JSON 数组/对象，例如 `'["600519"]'`；
+  只有部分产品模板含 `@code@` / `#date#` 占位符，其余产品按日期/代码查询需覆盖模板。
+- 默认最多返回 200 行（`max_rows` 可调，最大 1000），超出标 `truncated=true`。
+- 上游给 `""` / `"—"` 的位为 `null`，不是 0；`unknown ≠ 0`。
+
+**示例**
+
+```python
+await call("tdx_list_products", domain="龙虎榜与两融", keyword="龙虎")
+await call("tdx_get_product", name="holiday")
+await call("tdx_get_product", name="north", mapped=True)
+await call("tdx_get_product", name="lhb", params='["00101","1","2026","10",""]')
+await call("tdx_get_market_breadth", view="summary")
+await call("tdx_get_breadth_history", code="880005", count=5)
+await call("tdx_get_boards", kind="concept")
+await call("tdx_get_board_members", board="880564")
+await call("tdx_get_market_stat", kind="updown")
+await call("tdx_get_price_limits", symbol="600519")
+```
+
+**返回结构**
+
+- 通用产品：`{name, params, table: {cols, rows, cmd, domain, provenance}, total_rows,
+  returned_rows, truncated, data_date, mapped_effective, column_note, description, tip}`。
+- 专用工具：`{cols, rows, cmd, domain, provenance, total_rows, returned_rows, truncated,
+  source, tool, latency_ms, note}`。
+- 行情相关工具的 `provenance` 含 `as_of` / `status` / `fetched_at` / `source` / `elapsed`；
+  `as_of` 判不出来时为 `null`（不编造）。
+
+**与现有工具的关系**
+
+- 实时涨跌家数：现有数据源层有 `market_breadth` 类型但无 MCP 工具；本工具填补该空档，
+  Phase 2 会把 tdxdata 注册为该类型的备源。
+- 板块成分：现有 `get_industry_stocks` 覆盖行业成分股；tdxdata 只覆盖**概念**成分股，
+  两者互补，不替代。
+- 个股涨跌停：现有 `eltdx_get_special_limits` 只覆盖特殊品种；本工具覆盖普通个股。
+
+---
+
+### 25. tdxdata 深水区（5 个）
+
+> 源码模块：`tradex/src/tradex/tools/tdxdata_deep.py`
+> 只接 tdxdata **已有标准字段/语义层**的接口；龙虎榜/涨停池/解禁等 raw 产品仍走
+> `tdx_get_product`，在拿到逐列证据前不硬映射。
+
+#### `tdx_get_f10`
+
+获取结构化 F10 资料（22 个 section）。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `symbol` | string | **是** | — | 6 位股票代码（可带 sh/sz/bj 前缀）|
+| `section` | string | 否 | `"gsjj"` | F10 section，如 gsjj/jyfx/gbgd/zbyz/rdtc/fhrz/zg_jby/... |
+| `max_rows` | integer | 否 | `0` | 最大行数（0=配置默认，最大 1000）|
+
+**返回**：`cols/rows/provenance` + `available_sections`。
+⚠️ `fhrz` 是 IPO/融资累计统计（`ipo_count`/`ipo_proceeds_yuan`），**不是**逐次分红/除权事件表。
+
+#### `tdx_get_finance`
+
+获取结构化财务报表（9 类）。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `symbol` | string | **是** | — | 6 位股票代码 |
+| `kind` | string | 否 | `"zcfz"` | zcfz/lyb/xjllb/zyzb/cwbg/cwfxxq/tjcj/zysy/zyzbxq |
+| `max_rows` | integer | 否 | `0` | 最大行数（0=配置默认，最大 1000）|
+
+**返回**：标准英文字段（`_yuan` 元 / `_pct` 百分数 / `_vol` 股）+ 每行 raw。
+`cwfxxq` 上游返回多 ResultSet 且列义未定，会抛 `NotSupportedError`。
+
+#### `tdx_get_capital_flow_rank`
+
+获取全市场主力净流入榜。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `top_n` | integer | 否 | `20` | 返回前多少名（最大 20；上游固定 20）|
+
+**返回**：`code/name/market/price/net_inflow(元)/net_inflow_pct/change_pct(%)/`
+`net_inflow_continued(元)/net_inflow_days/change_pct_period(%)/date`。
+⚠️ 不支持单代码查询（榜单命令无代码位）；单代码资金流请用 `get_money_flow`。
+`price` / `net_inflow_pct` 本通道恒为 `null`（不填 0）。
+
+#### `tdx_get_lhb_review`
+
+获取龙虎榜复盘 `lhfp` 序列（近 60 个交易日）。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `date` | string | 否 | `""` | 结束日期 `YYYY-MM-DD`；留空用上游默认样例日期 |
+| `max_rows` | integer | 否 | `60` | 最大返回行数（最大 120）|
+
+**列义映射（有证据才映射）**：
+
+| 原始列 | 标准字段 | 证据/口径 |
+|---|---|---|
+| `N001` | `date` | 日期（强证据）|
+| `N002` | `listed_count` | 上榜股票数；与东财龙虎榜按日去重股票数连续 5 个交易日**完全一致** |
+| `N003` | `net_amount_yuan` | TDX 复盘口径净额（元）；与东财 `BILLBOARD_NET_AMT` 汇总**不完全一致**（2026-10-29 TDX -12.52 亿 vs 东财 -9.76 亿），只看方向/量级 |
+| `N004`–`N006` | 不映射 | 三者满足 `N002 = N004 + N005 + N006`，但语义未证实；原值保留在 `raw` |
+
+**返回**：`rows`（date/listed_count/net_amount_yuan/raw）+ `mapped_fields` /
+`unmapped_fields` / `note` / `provenance`。
+
+#### `tdx_get_lhb_stocks`
+
+获取龙虎榜个股明细（`lhzy` / `lhbsj`）。
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `date` | string | 否 | `""` | 交易日 `YYYY-MM-DD`；留空=上游最新交易日 |
+| `view` | string | 否 | `"list"` | `list`（lhbsj 全量个股）/ `detail`（lhzy 上游前 20）|
+| `max_rows` | integer | 否 | `0` | 0=默认 list 200 / detail 20，最大 500 |
+
+**列义（已用东财逐股核对）**：
+
+| view | 字段 | 说明 |
+|---|---|---|
+| 通用 | `code` / `name` / `market` | market：`0`=深、`1`=沪、`2`=北（已用沪深北样本核对）|
+| list | `price` / `change_pct` / `net_buy_amount_yuan` / `amount_yuan` / `tag` | price 元；change_pct %；net_buy 与东财 `BILLBOARD_NET_AMT` 逐股一致；amount 与东财 `ACCUM_AMOUNT` 逐股一致；tag 为上游标签（如 "3日"/"同城"）|
+| detail | `change_pct` / `amount_yuan` / `net_buy_amount_yuan` / `net_buy_ratio_pct` | ratio = net_buy/amount×100，已逐股验算 |
+| detail | `reason_code` | TDX 内部异动码，**未翻译**；需要东财原因文本请用 `get_dragon_tiger` |
+| detail | `date` / `tags` / `concepts` | tags/concepts 为 JSON list；`N011`/`N012` 保留 raw |
+
+⚠️ `lhbsj` 同一股票可能因不同异动原因出现多行；`lhzy` 为上游排序前 20。
+
+---
+
 ## 七、环境变量参考
 
 配置文件：复制 `tradex/.env.example` 为 `.env` 并按需修改（**不配置也可正常运行，全部有默认值**）。
@@ -2244,6 +2433,12 @@ _无入参。_
 | `AKSHARE_TIMEOUT` | `30` | AKShare 请求超时（秒）|
 | `TENCENT_TIMEOUT` | `10` | 腾讯行情接口超时（秒）|
 | `ELTDX_SERVER` | `auto` | 通达信服务器地址，`auto` 自动选择最优 |
+| `TDXDATA_ENABLED` | `true` | 是否启用 vendored tdxdata（通达信 7615）|
+| `TDXDATA_CONNECT_TIMEOUT` | `15` | tdxdata TCP 连接超时（秒）|
+| `TDXDATA_GAP` | `2.2` | tdxdata 进程级请求最小间隔（秒）；上游实测安全下限，勿调低 |
+| `TDXDATA_ROUTE_TIMEOUT` | `60` | tdxdata 慢查询（通用产品/板块）工具超时（秒）|
+| `TDXDATA_CACHE_TTL` | `300` | tdxdata 数据中心产品结果缓存 TTL（秒）|
+| `TDXDATA_MAX_ROWS` | `200` | tdxdata 工具默认最大返回行数 |
 
 ### 7.2 东财防封客户端（anti_ban_client）
 
@@ -2434,26 +2629,27 @@ _无入参。_
 
 | 层级 | 工具数 | 占比 |
 |------|--------|------|
-| L1 数据获取层 | 105 | 81.4% |
-| L2 计算引擎层 | 8 | 6.2% |
-| L3 决策支持层 | 16 | 12.4% |
-| **合计** | **130** | **100%** |
+| L1 数据获取层（含 tdxdata 15） | 121 | 82.9% |
+| L2 计算引擎层 | 9 | 6.2% |
+| L3 决策支持层 | 16 | 11.0% |
+| **合计** | **146** | **100%** |
 
 ### A.2 按源码模块
 
 | 模块 | 工具数 | 模块 | 工具数 |
 |------|--------|------|--------|
-| `eltdx_data.py` | 32 | `macro_fx.py` | 8 |
-| `news_events.py` | 14 | `market.py` | 7 |
-| `financial_stmt.py` | 8 | `technical_indicators.py` | 6 |
-| `signal_data_base.py` | 6 | `price_data.py` | 5 |
-| `industry.py` | 5 | `diagnostics.py` | 5 |
-| `company_info.py` | 4 | `valuation.py` | 4 |
-| `signal_data_flow.py` | 4 | `signal_data_board.py` | 3 |
-| `signal_generation.py` | 3 | `composite_analysis.py` | 3 |
-| `signal_data_etf.py` | 2 | `signal_data_cb.py` | 2 |
-| `performance_metrics.py` | 2 | `factor_analysis.py` | 2 |
-| `stock_screening.py` | 2 | `local_data.py` | 2 |
+| `eltdx_data.py` | 32 | `news_events.py` | 14 |
+| `tdxdata_data.py` | 10 | `financial_stmt.py` | 8 |
+| `macro_fx.py` | 8 | `market.py` | 7 |
+| `technical_indicators.py` | 7 | `signal_data_base.py` | 6 |
+| `price_data.py` | 5 | `industry.py` | 5 |
+| `diagnostics.py` | 5 | `company_info.py` | 4 |
+| `valuation.py` | 4 | `signal_data_flow.py` | 4 |
+| `signal_data_board.py` | 3 | `signal_generation.py` | 3 |
+| `composite_analysis.py` | 3 | `signal_data_etf.py` | 2 |
+| `signal_data_cb.py` | 2 | `performance_metrics.py` | 2 |
+| `factor_analysis.py` | 2 | `stock_screening.py` | 2 |
+| `local_data.py` | 2 | `tdxdata_deep.py` | 5 |
 | `analysis_engine.py` | 1 | | |
 
 ### A.3 快速上手示例
@@ -2505,8 +2701,8 @@ python scripts/live_smoke.py --out report.md      # 输出 Markdown 报告
 | 层 | 对象 | 说明 |
 |----|------|------|
 | 〇 | 数据源主机连通性 | 分辨「上游挂了」与「自己改坏了」 |
-| 一 | **每个已注册 fetcher**（102 个） | 逐个直打，含所有备源（不只主源） |
-| 二 | **每个 MCP 工具**（130 个） | 调用底层函数，校验返回结构 |
+| 一 | **每个已注册 fetcher**（103 个） | 逐个直打，含所有备源（不只主源） |
+| 二 | **每个 MCP 工具**（146 个） | 调用底层函数，校验返回结构 |
 
 状态分级（**只有 `FAIL` 算回归**，退出码才非 0）：
 

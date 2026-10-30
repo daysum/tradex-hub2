@@ -32,6 +32,12 @@ async def _server_lifespan(app):
             _shutdown_stream()
         except Exception as exc:  # noqa: BLE001
             logger.debug("cleanup eltdx stream failed: %s", exc)
+        try:
+            from .data_sources.tdxdata_fetchers import _shutdown as _shutdown_tdxdata
+
+            _shutdown_tdxdata()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cleanup tdxdata client failed: %s", exc)
 
 
 # Create the MCP server instance

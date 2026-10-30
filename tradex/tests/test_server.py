@@ -10,9 +10,9 @@ class TestServerSetup:
         assert mcp_server.name == "tradex"
 
     def test_all_90_tools_registered(self, mcp_server):
-        """v3.3.30: 130 tools (127 + 本地数据 2 个 + recent_minutes 1 个). 数量精确锁定, 版本演进需同步更新."""
+        """v3.6.0: 146 tools. 数量精确锁定, 版本演进需同步更新."""
         tools = mcp_server._tool_manager._tools
-        assert len(tools) == 130, f"Expected 130 tools, got {len(tools)}"
+        assert len(tools) == 146, f"Expected 146 tools, got {len(tools)}"
 
     def test_v01_tools_present(self, mcp_server):
         """V0.1 company info + price data tools (8 tools)."""
@@ -126,10 +126,39 @@ class TestServerSetup:
         for tool_name in v06_tools:
             assert tool_name in tools, f"V0.6 tool '{tool_name}' not registered"
 
-    def test_tool_count_per_version(self, mcp_server):
-        """v3.3.30: 实际注册工具总数精确锁定为 130 (防重复注册回归).
+    def test_tdxdata_tools_present(self, mcp_server):
+        """v3.4.0 Phase 1: tdxdata 数据中心 10 个工具已注册。"""
+        tools = mcp_server._tool_manager._tools
+        tdx_tools = [
+            "tdx_list_products",
+            "tdx_get_product",
+            "tdx_get_market_breadth",
+            "tdx_get_breadth_history",
+            "tdx_get_intraday_samples",
+            "tdx_get_boards",
+            "tdx_get_board_members",
+            "tdx_get_market_stat",
+            "tdx_get_price_limits",
+            "tdx_status",
+            # Phase 3 deep（tdxdata_deep.py）
+            "tdx_get_f10",
+            "tdx_get_finance",
+            "tdx_get_capital_flow_rank",
+            "tdx_get_lhb_review",
+            "tdx_get_lhb_stocks",
+        ]
+        for tool_name in tdx_tools:
+            assert tool_name in tools, f"tdxdata tool '{tool_name}' not registered"
 
-        129 → 130：新增 eltdx_get_recent_minutes（近期历史分时 0x0feb）。
+    def test_risk_metrics_tool_present(self, mcp_server):
+        """v3.4.0 Phase 3: L2 风险指标工具已注册。"""
+        tools = mcp_server._tool_manager._tools
+        assert "calculate_risk_metrics" in tools
+
+    def test_tool_count_per_version(self, mcp_server):
+        """v3.6.0: 实际注册工具总数精确锁定为 146 (防重复注册回归).
+
+        145 → 146：新增 tdx_get_lhb_stocks（龙虎榜个股明细 lhzy/lhbsj）。
         """
         tools = mcp_server._tool_manager._tools
-        assert len(tools) == 130
+        assert len(tools) == 146

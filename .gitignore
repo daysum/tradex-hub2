@@ -47,6 +47,10 @@ coverage/
 # Test data
 data/
 
+# Vendored tdxdata package data（必须入库；上面的 data/ 规则会误伤）
+!tradex/src/tdxdata/data/
+!tradex/src/tdxdata/data/**
+
 # Temp verification scripts
 _verify_*.py
 _test_*.py

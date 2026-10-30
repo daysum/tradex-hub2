@@ -78,6 +78,27 @@ class Config:
     ELTDX_SERVER: str = _get_env("ELTDX_SERVER", "auto")
     """通达信服务器地址，auto 表示自动选择最优"""
 
+    # ── tdxdata（通达信 7615 第二数据中枢） ─────────────────
+    # vendored 于 src/tdxdata（0.3.0，纯标准库零依赖）。
+    # 注意：上游单命令节流约 2.2s，且限流按来源 IP 计，禁止并发/高频调用。
+    TDXDATA_ENABLED: bool = _get_env("TDXDATA_ENABLED", True, bool)
+    """是否启用 tdxdata 数据源（默认启用；关闭后不注册任何 tdxdata 源/工具）"""
+
+    TDXDATA_CONNECT_TIMEOUT: float = _get_env("TDXDATA_CONNECT_TIMEOUT", 15.0, float)
+    """tdxdata 单次 TCP 连接超时（秒）"""
+
+    TDXDATA_GAP: float = _get_env("TDXDATA_GAP", 2.2, float)
+    """tdxdata 进程级请求最小间隔（秒）。上游实测安全下限 2.2s，勿调低"""
+
+    TDXDATA_ROUTE_TIMEOUT: float = _get_env("TDXDATA_ROUTE_TIMEOUT", 60.0, float)
+    """tdxdata 慢查询（通用产品/板块）的 SmartRouter 路由超时（秒）"""
+
+    TDXDATA_CACHE_TTL: int = _get_env("TDXDATA_CACHE_TTL", 300, int)
+    """tdxdata 数据中心产品结果缓存 TTL（秒）"""
+
+    TDXDATA_MAX_ROWS: int = _get_env("TDXDATA_MAX_ROWS", 200, int)
+    """tdxdata 工具默认最大返回行数（防止上下文爆量）"""
+
     # ── 智能路由 ────────────────────────────────────────────
     ROUTER_HEALTH_CHECK_INTERVAL: int = _get_env("ROUTER_HEALTH_CHECK_INTERVAL", 60, int)
     """健康检查间隔（秒）"""

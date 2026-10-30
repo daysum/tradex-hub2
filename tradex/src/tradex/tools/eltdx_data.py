@@ -366,7 +366,7 @@ def register(mcp: FastMCP):
         """
         try:
             start = time.time()
-            df, _src = _router.route("minute_data", code=code)
+            df, _src = _router.route("minute_data", code=code, timeout=30)
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
@@ -424,7 +424,7 @@ def register(mcp: FastMCP):
                 return _err("count 单页上限为 800，需要更多请用 eltdx_get_full_kline")
             start = time.time()
             df, _src = _router.route(
-                "historical_kline", code=code, period=period, count=count
+                "historical_kline", code=code, period=period, count=count, timeout=30
             )
             latency_ms = round((time.time() - start) * 1000, 1)
 
@@ -686,7 +686,7 @@ def register(mcp: FastMCP):
         """
         try:
             start = time.time()
-            df, _src = _router.route("today_ticks", code=code, count=count)
+            df, _src = _router.route("today_ticks", code=code, count=count, timeout=30)
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
@@ -703,10 +703,18 @@ def register(mcp: FastMCP):
                     "is_opening_match": bool(row.get("是否开盘撮合", False)),
                 })
 
+            note = ""
+            if _src == "tdxdata":
+                note = (
+                    "tdxdata 备源：逐笔无买卖方向（side=unknown）、无开盘撮合标记；"
+                    "成交额为 price×手数×100 推算；最多 1000 笔/次"
+                )
             return _ok({
                 "code": _strip_prefix(code),
+                "source": _src,
                 "latency_ms": latency_ms,
                 "tick_count": len(ticks),
+                "note": note,
                 "ticks": ticks,
             })
         except Exception as e:
@@ -1014,7 +1022,9 @@ def register(mcp: FastMCP):
         """
         try:
             start = time.time()
-            df, _src = _router.route("finance_report", code=code, report_type=report_type)
+            df, _src = _router.route(
+                "finance_report", code=code, report_type=report_type, timeout=30
+            )
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
@@ -1022,11 +1032,16 @@ def register(mcp: FastMCP):
 
             return _ok({
                 "code": _strip_prefix(code),
+                "source": _src,
                 "report_type": report_type,
                 "latency_ms": latency_ms,
                 "columns": list(df.columns),
                 "row_count": len(df),
                 "rows": df.head(20).to_dict(orient="records"),
+                "note": (
+                    "tdxdata 备源返回标准英文字段（与 eltdx 的 T 编码字段不同）"
+                    if _src == "tdxdata" else ""
+                ),
             })
         except Exception as e:
             logger.exception("eltdx_get_finance_report failed")
@@ -1044,7 +1059,7 @@ def register(mcp: FastMCP):
         """
         try:
             start = time.time()
-            df, _src = _router.route("dividend_financing", code=code)
+            df, _src = _router.route("dividend_financing", code=code, timeout=30)
             latency_ms = round((time.time() - start) * 1000, 1)
 
             if df is None or df.empty:
@@ -1052,10 +1067,15 @@ def register(mcp: FastMCP):
 
             return _ok({
                 "code": _strip_prefix(code),
+                "source": _src,
                 "latency_ms": latency_ms,
                 "columns": list(df.columns),
                 "row_count": len(df),
                 "rows": df.head(20).to_dict(orient="records"),
+                "note": (
+                    "tdxdata 备源返回标准英文字段（与 eltdx 的 T 编码字段不同）"
+                    if _src == "tdxdata" else ""
+                ),
             })
         except Exception as e:
             logger.exception("eltdx_get_dividend_financing failed")

@@ -484,6 +484,16 @@ def run_tools(only: set[str] | None = None) -> list[Row]:
     for name in sorted(registered):
         if only and name not in only:
             continue
+        # tdxdata 工具单命令约 2.2s 且按 IP 限流，默认不并入全量冒烟；
+        # 用 scripts/tdxdata_smoke.py 单独跑（或显式 --tools tdx_xxx 指定）。
+        if name.startswith("tdx_") and only is None:
+            rows.append(
+                Row(
+                    "tool", name, "", "SKIP", 0.0,
+                    "tdxdata 工具由 scripts/tdxdata_smoke.py 单独冒烟（2.2s 节流）",
+                )
+            )
+            continue
         fn = getattr(registered[name], "fn", None)
         if fn is None:
             rows.append(Row("tool", name, "", "SKIP", 0.0, "工具无底层 fn 属性"))
